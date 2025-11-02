@@ -30,8 +30,6 @@
 - **Manageable activity:** ~1 trade per day
 - **Moderate drawdown:** 14.5% (vs 21% on 4h)
 
-**See [TIMEFRAME_COMPARISON.md](TIMEFRAME_COMPARISON.md) for detailed analysis.**
-
 ### 🥇 15-Minute Timeframe (HIGHEST RETURN)
 
 **Performance:**
@@ -64,7 +62,6 @@
 - Active traders who can monitor frequently
 - Those seeking highest returns
 - **IF validated over 6+ months**
-
 
 ---
 
@@ -112,8 +109,6 @@ Coinbase Exchange (Execution)
 
 **Setup Time:** 2-3 weeks (development + testing)  
 **Cost:** ~$0-2/month (Google Cloud nearly free at this scale)
-
-**Complete Guide:** [TRADINGVIEW_24_7_DEPLOYMENT_PLAN.md](TRADINGVIEW_24_7_DEPLOYMENT_PLAN.md)
 
 **Includes:**
 - Modified Pine script with webhook alerts
