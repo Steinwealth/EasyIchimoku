@@ -1,0 +1,334 @@
+//@version=5
+strategy(title='Easy Ichimoku Trendline V7 Optimized', shorttitle='IchimokuTL_V7', overlay=true, pyramiding=0, initial_capital=10000, currency=currency.USD, default_qty_type=strategy.percent_of_equity, default_qty_value=100)
+
+// ============================================
+// V7 OPTIMIZED - REDUCE LOSSES, MAINTAIN WINS
+// Key Improvements over V6:
+// 1. Breakeven protection (from V5 Simple) - ENABLED by default
+// 2. Optional AND logic (require both signals) - OFF by default (use OR)
+// 3. Optional RSI filter (avoid extremes) - OFF by default
+// 4. Adjustable ADX threshold - 20 by default (tune higher for quality)
+// 5. Tighter stop loss (2.0% vs 2.5%) - ENABLED
+// 6. Volume confirmation - ENABLED
+// 7. Optional ATR-based dynamic stops
+// 
+// DEFAULT MODE: Balanced (OR logic, breakeven ON, RSI filter OFF)
+// ============================================
+
+// Entry Mode Selection
+entry_mode = input.string("Both Combined", "Entry Mode", options=["Ichimoku Only", "Trendline Only", "Both Combined"], tooltip="Both Combined uses OR logic by default (either can trigger)", group="Entry Strategy")
+require_both = input.bool(false, "Require Both Signals (AND Logic)", tooltip="Only trade when both Ichimoku AND Trendline agree (VERY restrictive)", group="Entry Strategy")
+
+// Ichimoku Settings
+conversionPeriods = input.int(9, "Tenkan", minval=1, group="Ichimoku")
+basePeriods = input.int(26, "Kijun", minval=1, group="Ichimoku")
+laggingSpan2Periods = input.int(52, "Senkou B", minval=1, group="Ichimoku")
+displacement = input.int(26, "Displacement", minval=1, group="Ichimoku")
+
+use_tk_cross = input.bool(true, "TK Cross Filter", group="Ichimoku")
+use_cloud_filter = input.bool(true, "Cloud Filter", group="Ichimoku")
+use_chikou_filter = input.bool(true, "Chikou Filter", group="Ichimoku")
+use_cloud_color = input.bool(true, "Cloud Color Filter", group="Ichimoku")
+
+use_adx_filter = input.bool(true, "ADX Filter", group="Ichimoku")
+adx_length = input.int(14, "ADX Length", minval=1, group="Ichimoku")
+adx_threshold = input.float(20, "ADX Threshold", minval=15, maxval=35, tooltip="Adjust higher (22-24) for fewer, higher quality trades", group="Ichimoku")
+
+// Trendline Settings
+pivot_lookback = input.int(5, "Pivot Lookback", minval=3, maxval=15, tooltip="Bars for pivot detection", group="Trendline Detection")
+use_volume_conf = input.bool(true, "Volume Confirmation", tooltip="Require volume spike on break", group="Trendline Detection")
+volume_mult = input.float(1.5, "Volume Multiplier", minval=1, maxval=3, step=0.1, group="Trendline Detection")
+breakout_buffer_pct = input.float(0.2, "Breakout Buffer %", minval=0.1, maxval=1, step=0.1, tooltip="How far above/below for valid break", group="Trendline Detection")
+
+// RSI Filter (NEW V7 - Optional for fine-tuning)
+use_rsi_filter = input.bool(false, "RSI Filter", tooltip="Enable to avoid extreme RSI entries (optional)", group="RSI Filter")
+rsi_length = input.int(14, "RSI Length", minval=1, group="RSI Filter")
+rsi_overbought = input.float(75, "RSI Overbought", minval=60, maxval=85, tooltip="Higher value = less restrictive", group="RSI Filter")
+rsi_oversold = input.float(25, "RSI Oversold", minval=15, maxval=40, tooltip="Lower value = less restrictive", group="RSI Filter")
+rsi_avoid_extreme = input.bool(true, "Avoid Extreme RSI", tooltip="Don't enter long if RSI > overbought, don't enter short if RSI < oversold", group="RSI Filter")
+
+// Risk Management
+stop_mode = input.string("Fixed %", "Stop Loss Mode", options=["Fixed %", "ATR-Based"], tooltip="Fixed % or ATR-based dynamic stops", group="Risk Management")
+stop_loss_pct = input.float(2.0, "Stop Loss %", minval=0.5, maxval=5, step=0.1, tooltip="Tighter: 2.0% vs 2.5% (V7 improvement)", group="Risk Management")
+atr_length = input.int(14, "ATR Length", minval=1, group="Risk Management")
+atr_mult = input.float(2.0, "ATR Multiplier", minval=1, maxval=4, step=0.1, tooltip="Stop distance = ATR * multiplier", group="Risk Management")
+
+take_profit_pct = input.float(10.0, "Take Profit %", minval=5, maxval=20, step=0.5, group="Risk Management")
+
+// Breakeven (V7 ADDITION - from V5 Simple)
+use_breakeven = input.bool(true, "Breakeven Protection", tooltip="Lock in small profit after move", group="Breakeven Protection")
+breakeven_trigger = input.float(2.0, "Breakeven Trigger %", minval=0.5, maxval=5, step=0.5, group="Breakeven Protection")
+breakeven_level = input.float(0.5, "Breakeven Lock %", minval=0, maxval=2, step=0.1, group="Breakeven Protection")
+
+// Trailing
+use_trailing = input.bool(true, "Trailing Stop", group="Trailing Stop")
+trailing_trigger = input.float(2.5, "Trail Trigger %", minval=1, maxval=10, step=0.5, group="Trailing Stop")
+trailing_dist = input.float(1.5, "Trail Distance %", minval=0.5, maxval=5, step=0.5, group="Trailing Stop")
+
+// ============================================
+// ICHIMOKU CALCULATIONS
+// ============================================
+
+middleDonchian(len) =>
+    (ta.lowest(low, len) + ta.highest(high, len)) / 2
+
+tenkan = middleDonchian(conversionPeriods)
+kijun = middleDonchian(basePeriods)
+senkouA = (tenkan + kijun) / 2
+senkouB = middleDonchian(laggingSpan2Periods)
+chikou = close
+
+cloud_top = math.max(senkouA, senkouB)
+cloud_bottom = math.min(senkouA, senkouB)
+cloud_bullish = senkouA > senkouB
+cloud_bearish = senkouA < senkouB
+
+tk_cross_up = ta.crossover(tenkan, kijun)
+tk_cross_down = ta.crossunder(tenkan, kijun)
+
+price_above_cloud = close > cloud_top
+price_below_cloud = close < cloud_bottom
+
+chikou_bullish = chikou > close[displacement]
+chikou_bearish = chikou < close[displacement]
+
+[diPlus, diMinus, adx] = ta.dmi(adx_length, adx_length)
+strong_trend = adx >= adx_threshold
+
+// RSI (V7 ADDITION)
+rsi = ta.rsi(close, rsi_length)
+rsi_ok_long = use_rsi_filter and rsi_avoid_extreme ? rsi < rsi_overbought : true
+rsi_ok_short = use_rsi_filter and rsi_avoid_extreme ? rsi > rsi_oversold : true
+
+// ATR (V7 ADDITION - for dynamic stops)
+atr = ta.atr(atr_length)
+
+// ============================================
+// TRENDLINE CALCULATIONS
+// ============================================
+
+// Find pivots
+pivot_high = ta.pivothigh(high, pivot_lookback, pivot_lookback)
+pivot_low = ta.pivotlow(low, pivot_lookback, pivot_lookback)
+
+// Track last 2 pivots for trendline
+var float last_high1 = na
+var int last_high1_bar = na
+var float last_high2 = na
+var int last_high2_bar = na
+
+var float last_low1 = na
+var int last_low1_bar = na
+var float last_low2 = na
+var int last_low2_bar = na
+
+// Update pivot highs
+if not na(pivot_high)
+    last_high2 := last_high1
+    last_high2_bar := last_high1_bar
+    last_high1 := pivot_high
+    last_high1_bar := bar_index - pivot_lookback
+
+// Update pivot lows
+if not na(pivot_low)
+    last_low2 := last_low1
+    last_low2_bar := last_low1_bar
+    last_low1 := pivot_low
+    last_low1_bar := bar_index - pivot_lookback
+
+// Calculate resistance trendline (diagonal from pivot highs)
+var float resistance_line = na
+if not na(last_high1) and not na(last_high2) and last_high1_bar != last_high2_bar
+    slope = (last_high1 - last_high2) / (last_high1_bar - last_high2_bar)
+    resistance_line := last_high1 + slope * (bar_index - last_high1_bar)
+
+// Calculate support trendline (diagonal from pivot lows)
+var float support_line = na
+if not na(last_low1) and not na(last_low2) and last_low1_bar != last_low2_bar
+    slope = (last_low1 - last_low2) / (last_low1_bar - last_low2_bar)
+    support_line := last_low1 + slope * (bar_index - last_low1_bar)
+
+// Volume
+volume_ma = ta.sma(volume, 20)
+volume_spike = volume > volume_ma * volume_mult
+vol_ratio = volume / volume_ma
+
+// ============================================
+// BREAKOUT DETECTION
+// ============================================
+
+// Resistance breakout (bullish)
+resistance_distance = not na(resistance_line) ? (close - resistance_line) / close * 100 : 0
+resistance_breakout = not na(resistance_line) and close > resistance_line * (1 + breakout_buffer_pct / 100) and close[1] <= resistance_line[1]
+
+// Support breakdown (bearish)
+support_distance = not na(support_line) ? (support_line - close) / close * 100 : 0
+support_breakdown = not na(support_line) and close < support_line * (1 - breakout_buffer_pct / 100) and close[1] >= support_line[1]
+
+// Confirm with volume (V7: Always require volume for trendline)
+trendline_long = resistance_breakout and (use_volume_conf ? volume_spike : true)
+trendline_short = support_breakdown and (use_volume_conf ? volume_spike : true)
+
+// ============================================
+// ENTRY SIGNALS
+// ============================================
+
+// Ichimoku signals
+ichimoku_long_signal = use_tk_cross ? tk_cross_up : tenkan > kijun
+ichimoku_long = ichimoku_long_signal and (use_cloud_filter ? price_above_cloud : true) and (use_chikou_filter ? chikou_bullish : true) and (use_cloud_color ? cloud_bullish : true) and (use_adx_filter ? strong_trend : true) and rsi_ok_long
+
+ichimoku_short_signal = use_tk_cross ? tk_cross_down : tenkan < kijun
+ichimoku_short = ichimoku_short_signal and (use_cloud_filter ? price_below_cloud : true) and (use_chikou_filter ? chikou_bearish : true) and (use_cloud_color ? cloud_bearish : true) and (use_adx_filter ? strong_trend : true) and rsi_ok_short
+
+// V7 IMPROVEMENT: AND logic for "Both Combined" mode (higher quality entries)
+both_long = ichimoku_long and trendline_long
+both_short = ichimoku_short and trendline_short
+
+// Combined signals based on mode
+long_condition = entry_mode == "Ichimoku Only" ? ichimoku_long : entry_mode == "Trendline Only" ? trendline_long : (require_both ? both_long : (ichimoku_long or trendline_long))
+
+short_condition = entry_mode == "Ichimoku Only" ? ichimoku_short : entry_mode == "Trendline Only" ? trendline_short : (require_both ? both_short : (ichimoku_short or trendline_short))
+
+// ============================================
+// POSITION MANAGEMENT
+// ============================================
+
+var float entry_price = na
+var float current_stop = na
+var bool breakeven_set = false
+var bool trailing_active = false
+var string entry_type = ""
+
+if strategy.position_size == 0
+    entry_price := na
+    current_stop := na
+    breakeven_set := false
+    trailing_active := false
+    entry_type := ""
+
+if strategy.position_size != 0 and na(entry_price)
+    entry_price := strategy.opentrades.entry_price(0)
+    entry_type := both_long or both_short ? "BOTH" : trendline_long or trendline_short ? "TRENDLINE" : "ICHIMOKU"
+    
+    // V7: ATR-based or fixed stop
+    if strategy.position_size > 0
+        current_stop := stop_mode == "ATR-Based" ? entry_price - (atr * atr_mult) : entry_price * (1 - stop_loss_pct / 100)
+    else
+        current_stop := stop_mode == "ATR-Based" ? entry_price + (atr * atr_mult) : entry_price * (1 + stop_loss_pct / 100)
+
+current_profit_long = strategy.position_size > 0 ? (close - entry_price) / entry_price * 100 : 0
+current_profit_short = strategy.position_size < 0 ? (entry_price - close) / entry_price * 100 : 0
+
+// V7: Breakeven Protection (from V5 Simple)
+if strategy.position_size > 0 and not na(entry_price) and use_breakeven and not breakeven_set and current_profit_long >= breakeven_trigger
+    current_stop := entry_price * (1 + breakeven_level / 100)
+    breakeven_set := true
+
+if strategy.position_size < 0 and not na(entry_price) and use_breakeven and not breakeven_set and current_profit_short >= breakeven_trigger
+    current_stop := entry_price * (1 - breakeven_level / 100)
+    breakeven_set := true
+
+// Trailing
+if strategy.position_size > 0 and use_trailing and current_profit_long >= trailing_trigger
+    trailing_active := true
+    new_stop = close * (1 - trailing_dist / 100)
+    if new_stop > current_stop
+        current_stop := new_stop
+
+if strategy.position_size < 0 and use_trailing and current_profit_short >= trailing_trigger
+    trailing_active := true
+    new_stop = close * (1 + trailing_dist / 100)
+    if new_stop < current_stop
+        current_stop := new_stop
+
+// ============================================
+// ENTRIES & EXITS
+// ============================================
+
+if long_condition
+    strategy.entry("LONG", strategy.long)
+
+if short_condition
+    strategy.entry("SHORT", strategy.short)
+
+if strategy.position_size > 0 and not na(current_stop)
+    target = entry_price * (1 + take_profit_pct / 100)
+    strategy.exit("EXIT", "LONG", stop=current_stop, limit=target)
+
+if strategy.position_size < 0 and not na(current_stop)
+    target = entry_price * (1 - take_profit_pct / 100)
+    strategy.exit("EXIT", "SHORT", stop=current_stop, limit=target)
+
+// ============================================
+// PLOTTING
+// ============================================
+
+// Ichimoku
+plot(tenkan, color=color.new(color.red, 0), linewidth=1, title="Tenkan")
+plot(kijun, color=color.new(color.blue, 0), linewidth=1, title="Kijun")
+plot(chikou, color=color.new(color.teal, 0), linewidth=1, title="Chikou", offset=-displacement)
+
+p1 = plot(senkouA, color=color.new(color.green, 0), linewidth=1, title="Senkou A", offset=displacement)
+p2 = plot(senkouB, color=color.new(color.red, 0), linewidth=1, title="Senkou B", offset=displacement)
+fill(p1, p2, color=cloud_bullish ? color.new(color.green, 90) : color.new(color.red, 90), title="Cloud")
+
+// Trendlines (BOLD - MAIN FEATURE)
+plot(resistance_line, color=color.new(color.yellow, 0), linewidth=3, style=plot.style_line, title="Resistance Trendline")
+plot(support_line, color=color.new(color.yellow, 0), linewidth=3, style=plot.style_line, title="Support Trendline")
+
+// Pivots (small markers)
+plotshape(pivot_high, title="PH", location=location.abovebar, color=color.new(color.gray, 50), style=shape.diamond, size=size.tiny)
+plotshape(pivot_low, title="PL", location=location.belowbar, color=color.new(color.gray, 50), style=shape.diamond, size=size.tiny)
+
+// Entry signals
+plotshape(long_condition and trendline_long, title="Trendline Long", location=location.belowbar, color=color.lime, style=shape.triangleup, size=size.normal, text="TL")
+plotshape(long_condition and ichimoku_long, title="Ichimoku Long", location=location.belowbar, color=color.green, style=shape.circle, size=size.small, text="ICH")
+plotshape(long_condition and both_long, title="Both Long", location=location.belowbar, color=color.aqua, style=shape.square, size=size.large, text="BOTH")
+
+plotshape(short_condition and trendline_short, title="Trendline Short", location=location.abovebar, color=color.orange, style=shape.triangledown, size=size.normal, text="TL")
+plotshape(short_condition and ichimoku_short, title="Ichimoku Short", location=location.abovebar, color=color.red, style=shape.circle, size=size.small, text="ICH")
+plotshape(short_condition and both_short, title="Both Short", location=location.abovebar, color=color.maroon, style=shape.square, size=size.large, text="BOTH")
+
+// Stop
+plot(strategy.position_size != 0 ? current_stop : na, color=color.red, linewidth=2, style=plot.style_linebr, title="Stop")
+
+// Breakeven marker (V7)
+plotshape(breakeven_set and breakeven_set[1] == false and strategy.position_size > 0, title="BE Long", location=location.belowbar, color=color.yellow, style=shape.circle, size=size.tiny)
+plotshape(breakeven_set and breakeven_set[1] == false and strategy.position_size < 0, title="BE Short", location=location.abovebar, color=color.yellow, style=shape.circle, size=size.tiny)
+
+bgcolor(price_above_cloud and cloud_bullish ? color.new(color.green, 97) : price_below_cloud and cloud_bearish ? color.new(color.red, 97) : na)
+
+// Info
+var table info = table.new(position.top_right, 2, 10, border_width=1)
+if barstate.islast
+    table.cell(info, 0, 0, "V7 Optimized", bgcolor=color.gray, text_color=color.white)
+    table.cell(info, 1, 0, "Value", bgcolor=color.gray, text_color=color.white)
+    
+    table.cell(info, 0, 1, "Position", text_color=color.white)
+    table.cell(info, 1, 1, strategy.position_size > 0 ? "LONG" : strategy.position_size < 0 ? "SHORT" : "NONE", text_color=strategy.position_size > 0 ? color.green : strategy.position_size < 0 ? color.red : color.gray)
+    
+    table.cell(info, 0, 2, "Entry Type", text_color=color.white)
+    table.cell(info, 1, 2, entry_type, text_color=color.aqua)
+    
+    table.cell(info, 0, 3, "ADX", text_color=color.white)
+    table.cell(info, 1, 3, str.tostring(adx, "#.#"), text_color=strong_trend ? color.green : color.red)
+    
+    table.cell(info, 0, 4, "RSI", text_color=color.white)
+    table.cell(info, 1, 4, str.tostring(rsi, "#.#"), text_color=rsi > rsi_overbought ? color.red : rsi < rsi_oversold ? color.lime : color.white)
+    
+    table.cell(info, 0, 5, "Volume", text_color=color.white)
+    table.cell(info, 1, 5, str.tostring(vol_ratio, "#.##") + "x", text_color=volume_spike ? color.green : color.white)
+    
+    table.cell(info, 0, 6, "Breakeven", text_color=color.white)
+    table.cell(info, 1, 6, breakeven_set ? "SET" : "-", text_color=breakeven_set ? color.yellow : color.gray)
+    
+    table.cell(info, 0, 7, "Trailing", text_color=color.white)
+    table.cell(info, 1, 7, trailing_active ? "ACTIVE" : "-", text_color=trailing_active ? color.lime : color.gray)
+    
+    table.cell(info, 0, 8, "Profit %", text_color=color.white)
+    current_profit = strategy.position_size > 0 ? current_profit_long : strategy.position_size < 0 ? current_profit_short : 0
+    table.cell(info, 1, 8, str.tostring(current_profit, "#.##") + "%", text_color=current_profit > 0 ? color.green : current_profit < 0 ? color.red : color.white)
+    
+    table.cell(info, 0, 9, "Stop Mode", text_color=color.white)
+    table.cell(info, 1, 9, stop_mode, text_color=color.aqua)
+
