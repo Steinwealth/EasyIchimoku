@@ -90,27 +90,36 @@ Annualized CAGR assumes compounding and continuous deployment; actual realized a
 
 Annualized CAGR is a mathematical normalization of the observed forward window and does not imply the same return rate will persist.
 
-### 4-symbol system (blended estimate)
+### 4-symbol portfolio (compounded blend)
 
-Using the simple average monthly gains derived from the forward test windows: BTC ~4.3%, ETH ~14.3%, SOL ~15.7%, XRP ~6.2% → blended ~40.5%/month (linear estimate). Execution model: 3 partitions with 1/3 capital allocation per trade; 3× leverage is offset by 1/3 sizing, yielding ~1× effective exposure. This is an estimate used for planning and monitoring; real performance varies by regime, fees, slippage, and execution. This blended estimate is a heuristic and does not model correlation, capital idle time, or overlapping drawdowns.
+Using compounded monthly rates derived from forward-tested windows:
 
-#### Compounded projection (illustrative)
+- BTC: ~3.75% / month  
+- ETH: ~10.12% / month  
+- SOL: ~11.22% / month  
+- XRP: ~5.20% / month  
 
-Assuming ~40.5% average monthly return and continuous compounding:
+Blended compounded monthly rate (sum of rates): ~30.3% / month
+
+Execution model: 3 partitions with 1/3 capital allocation per trade; 3× leverage is offset by 1/3 sizing, yielding approximately 1× effective exposure per active position. Blended modeling does not assume leverage amplification.
+
+This normalization framework (window-adjusted compounding + blended portfolio modeling) is used internally to monitor strategy stability and cross-symbol capital efficiency.
+
+#### Compounded projection (illustrative, derived from ~30.3% monthly rate)
 
 | Period | Total Multiple | Total Return |
 |--------|----------------|--------------|
-| 1 month | 1.405× | +40.5% |
-| 6 months | 7.53× | +652.9% |
-| 12 months | 56.7× | +5,569% |
+| 1 month | 1.30× | +30.3% |
+| 6 months | 4.99× | +399% |
+| 12 months | 24.9× | +2,390% |
 
 Example (starting capital $4,000):
 
-- 1 month → ~$5,620  
-- 6 months → ~$30,118  
-- 12 months → ~$226,776  
+- 1 month → ~$5,211  
+- 6 months → ~$19,960  
+- 12 months → ~$99,600  
 
-These figures are mathematical projections assuming the blended monthly rate persists and capital remains continuously deployed. Real-world results will vary significantly due to volatility regimes, correlation across symbols, execution timing, funding, fees, and slippage.
+These figures are mathematical projections assuming the blended compounded monthly rate persists and capital remains continuously deployed. Real-world results will vary due to volatility regimes, correlation, execution timing, funding, fees, and slippage.
 
 ---
 
