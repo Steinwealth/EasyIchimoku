@@ -1,6 +1,6 @@
 # Easy Ichimoku v14
 
-Public-safe TradingView Pine Script for the **€£$¥ Ichimoku v14** strategy. Use with your own broker/agent; no internal URLs or secrets.
+TradingView Pine Script for the **€£$¥ Ichimoku v14** strategy. Use with your own broker/agent; no internal URLs or secrets.
 
 ## What’s included
 
