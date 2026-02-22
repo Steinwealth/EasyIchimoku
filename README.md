@@ -2,14 +2,14 @@
 
 **€£$¥ Ichimoku v14** — Production-style TradingView Pine Script (v5) for Ichimoku Cloud trend-following with preset-optimized parameters, multi-layer filters, and webhook-ready alerts. Use with your own broker and the Easy TradingView Agent to process TradingView alerts into executed decisions for your crypto broker.
 
-> **Positioning:** Part of the "Easy Trading Software" suite. Validation is based on structured historical backtests and ongoing live forward tests using the 1H preset configurations. 5m presets are included in the script but are not represented in the performance tables below. Designed for reliability and automation: preset defaults per symbol/timeframe, time filters, breakeven and trailing logic, and rich JSON alert payloads for downstream execution and analytics. 1H Presets for Coinbase Perp Nano Futures BTC, ETH, SOL, & XRP are included.
+> **Positioning:** Part of the "Easy Trading Software" suite. Validation is based on structured historical backtests and ongoing live forward tests using the 1H preset configurations. Designed for reliability and automation: preset defaults per symbol/timeframe, time filters, breakeven and trailing logic, and rich JSON alert payloads for downstream execution and analytics. 1H & 5m presets for Coinbase USA Perp Nano Futures BTC, ETH, SOL, & XRP are included.
 
 ---
 
 ### Why this project stands out
 
-- **Preset-optimized per symbol** — BTC, ETH, SOL, XRP (5m/1h) and other pairs have dedicated presets (Ichimoku periods, ADX, RSI, risk, breakeven, trailing) tuned from backtests; one-click "Use Preset Defaults."
-- **Multi-layer entry and exit logic** — TK cross + cloud + Chikou + cloud color + ADX + RSI; exits via stop/target, breakeven, 3H/6H breakeven, trailing stop, and RSI-based early exit.
+- **Preset-optimized per symbol** — BTC, ETH, SOL, XRP (1h/5m) and other pairs have dedicated presets (Ichimoku periods, ADX, RSI, risk, breakeven, trailing) tuned from backtests; one-click "Use Preset Defaults."
+- **Multi-layer entry and exit logic** — TK cross + cloud + Chikou + cloud color + ADX + RSI; exits via stop/target, breakeven, 6H breakeven, trailing stop, and RSI-based early exit.
 - **Time filters and guardrails** — Weekend block, evening block, news-volatility filter (8–9 AM PT); configurable so you avoid low-quality sessions.
 - **Webhook-ready and analytics-ready** — Alerts emit full JSON (strategy_id, side, price, symbol, timeframe, and 100+ `historical_enhancer` fields) for execution agents and ML/backtest pipelines.
 
@@ -38,7 +38,7 @@ Settings used for the evidence tables in this README:
 - **Timeframes represented in evidence:**
   - 1H preset configurations (all performance tables in this README)
 - **Additional presets available in script:**
-  - 5m configurations (not shown in evidence tables).
+  - 5m configurations
 - **Commission:** 0.04%
 - **Position size:** 80%
 - **Execution:** `calc_on_every_tick=true` (exits evaluated intrabar)
