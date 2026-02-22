@@ -2,7 +2,7 @@
 
 **€£$¥ Ichimoku v14** — Production-style TradingView Pine Script (v5) for Ichimoku Cloud trend-following with preset-optimized parameters, multi-layer filters, and webhook-ready alerts. Use with your own broker and the Easy TradingView Agent to process TradingView alerts into executed decisions for your crypto broker.
 
-> **Positioning:** Part of the "Easy Trading Software" suite. Validation is based on structured historical backtests and ongoing live forward tests using the 1H preset configurations. Designed for reliability and automation: preset defaults per symbol/timeframe, time filters, breakeven and trailing logic, and rich JSON alert payloads for downstream execution and analytics. 1H & 5m presets for Coinbase USA Perp Nano Futures BTC, ETH, SOL, & XRP are included.
+> **Positioning:** Part of the "Easy Trading Software" suite. Validation is based on structured historical backtests and ongoing live forward tests using the 1H preset configurations. Designed for reliability and automation: preset defaults per symbol/timeframe, time filters, breakeven and trailing logic, and rich JSON alert payloads for downstream execution and analytics. 1H & 5m presets for Coinbase USA Perp Nano Futures BTC, ETH, SOL, & XRP are included. This project demonstrates structured validation methodology (window normalization, compounding analysis, and portfolio blending) combined with production-ready alert architecture for automated execution systems.
 
 ---
 
@@ -22,7 +22,7 @@
 | Goal | Where to go |
 |------|-------------|
 | **Load and run** | [Quick start](#quick-start) |
-| **See proof** | [Evidence (historical backtest)](#evidence-historical-backtest-snapshot) · [Evidence (forward test)](#evidence-forward-test-results--live) |
+| **See proof** | [Historical backtest snapshot](#historical-backtest-snapshot-short-term-optimization-window) · [Evidence (forward test)](#evidence-forward-test-results--live) |
 | **Understand the strategy** | [What is Ichimoku?](#what-is-ichimoku) · [What’s in v14](#whats-in-v14) |
 | **Presets and features** | [Presets](#presets) · [Main features](#main-features-v14) |
 | **Risk and filters** | [Risk and guardrails](#risk-and-guardrails) |
@@ -47,7 +47,9 @@ Results differ on bar close vs every tick, and by symbol liquidity/spread. Histo
 
 ---
 
-## Evidence (Historical Backtest Snapshot)
+## Historical Backtest Snapshot (Short-Term Optimization Window)
+
+This snapshot reflects a discrete 41-day optimization window and is separate from the ongoing forward test results below.
 
 **Backtest window:** Oct 3 – Nov 13, 2025 (41 days). Coinbase USA nano futures, 5-minute charts, 0.04% commission, 80% position size. 30-day estimate = `(1 + raw_return)^(30/41) − 1`.
 
@@ -99,7 +101,7 @@ Using compounded monthly rates derived from forward-tested windows:
 - SOL: ~11.22% / month  
 - XRP: ~5.20% / month  
 
-Blended compounded monthly rate (sum of rates): ~30.3% / month
+Blended compounded monthly rate (assuming capital partitioned per symbol and independent deployment): ~30.3% / month
 
 Execution model: 3 partitions with 1/3 capital allocation per trade; 3× leverage is offset by 1/3 sizing, yielding approximately 1× effective exposure per active position. Blended modeling does not assume leverage amplification.
 
