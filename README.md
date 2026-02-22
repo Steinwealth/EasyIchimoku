@@ -2,7 +2,7 @@
 
 **€£$¥ Ichimoku v14** — Production-style TradingView Pine Script (v5) for Ichimoku Cloud trend-following with preset-optimized parameters, multi-layer filters, and webhook-ready alerts. Use with your own broker and the Easy TradingView Agent to process TradingView alerts into executed decisions for your crypto broker.
 
-> **Positioning:** Part of the "Easy Trading Software" suite. Validation is based on a structured historical backtest snapshot plus an ongoing live forward test in TradingView Strategy Tester; the forward test continues through the year to study regime robustness, consistency, and capital efficiency. Designed for reliability and automation: preset defaults per symbol/timeframe, time filters, breakeven and trailing logic, and rich JSON alert payloads for downstream execution and analytics. 1H Presets for Coinbase Perp Nano Futures BTC, ETH, SOL, & XRP are included.
+> **Positioning:** Part of the "Easy Trading Software" suite. Validation is based on structured historical backtests and ongoing live forward tests using the 1H preset configurations. 5m presets are included in the script but are not represented in the performance tables below. Designed for reliability and automation: preset defaults per symbol/timeframe, time filters, breakeven and trailing logic, and rich JSON alert payloads for downstream execution and analytics. 1H Presets for Coinbase Perp Nano Futures BTC, ETH, SOL, & XRP are included.
 
 ---
 
@@ -35,7 +35,10 @@
 Settings used for the evidence tables in this README:
 
 - **Venue:** Coinbase USA nano futures
-- **Timeframes tested:** 5m and 1h
+- **Timeframes represented in evidence:**
+  - 1H preset configurations (all performance tables in this README)
+- **Additional presets available in script:**
+  - 5m configurations (not shown in evidence tables).
 - **Commission:** 0.04%
 - **Position size:** 80%
 - **Execution:** `calc_on_every_tick=true` (exits evaluated intrabar)
@@ -47,6 +50,8 @@ Results differ on bar close vs every tick, and by symbol liquidity/spread. Histo
 ## Evidence (Historical Backtest Snapshot)
 
 **Backtest window:** Oct 3 – Nov 13, 2025 (41 days). Coinbase USA nano futures, 5-minute charts, 0.04% commission, 80% position size. 30-day estimate = `(1 + raw_return)^(30/41) − 1`.
+
+Results below are from the 1H preset configurations.
 
 | Preset | Raw return (41 d) | 30-day est. | Max DD | Trades | Win rate | Profit factor |
 |--------|-------------------|-------------|--------|--------|----------|---------------|
@@ -61,6 +66,8 @@ Results differ on bar close vs every tick, and by symbol liquidity/spread. Histo
 
 Forward test results from TradingView Strategy Tester. These are real-time forward runs (not retrospective curve-fit) and are being continued throughout the year to evaluate regime robustness, consistency, and capital efficiency. Forward test runs are kept live and updated periodically; this repo reports the latest captured window.
 
+Results below are from the 1H preset configurations running continuously in TradingView Strategy Tester.
+
 | Preset | Window | Total P&L | Max DD | Trades | Win rate | Profit factor |
 |--------|--------|-----------|--------|--------|----------|---------------|
 | **BTC (BIP)** | Jul 18, 2025 – Feb 22, 2026 | +30.34% | 4.25% | 71 | 67.61% | 2.122 |
@@ -71,6 +78,8 @@ Forward test results from TradingView Strategy Tester. These are real-time forwa
 ### Compounded rate (derived)
 
 To normalize performance across uneven windows, we compute a compounded monthly rate and an annualized CAGR using: **CAGR = (1 + R)^(365/days) − 1**, where R is total return over the window and *days* is the number of calendar days in the window.
+
+Annualized CAGR assumes compounding and continuous deployment; actual realized annual returns will vary by regime and execution conditions.
 
 | Preset | Days | Compounded monthly | Annualized CAGR |
 |--------|------|--------------------|-----------------|
@@ -84,6 +93,24 @@ Annualized CAGR is a mathematical normalization of the observed forward window a
 ### 4-symbol system (blended estimate)
 
 Using the simple average monthly gains derived from the forward test windows: BTC ~4.3%, ETH ~14.3%, SOL ~15.7%, XRP ~6.2% → blended ~40.5%/month (linear estimate). Execution model: 3 partitions with 1/3 capital allocation per trade; 3× leverage is offset by 1/3 sizing, yielding ~1× effective exposure. This is an estimate used for planning and monitoring; real performance varies by regime, fees, slippage, and execution. This blended estimate is a heuristic and does not model correlation, capital idle time, or overlapping drawdowns.
+
+#### Compounded projection (illustrative)
+
+Assuming ~40.5% average monthly return and continuous compounding:
+
+| Period | Total Multiple | Total Return |
+|--------|----------------|--------------|
+| 1 month | 1.405× | +40.5% |
+| 6 months | 7.53× | +652.9% |
+| 12 months | 56.7× | +5,569% |
+
+Example (starting capital $4,000):
+
+- 1 month → ~$5,620  
+- 6 months → ~$30,118  
+- 12 months → ~$226,776  
+
+These figures are mathematical projections assuming the blended monthly rate persists and capital remains continuously deployed. Real-world results will vary significantly due to volatility regimes, correlation across symbols, execution timing, funding, fees, and slippage.
 
 ---
 
