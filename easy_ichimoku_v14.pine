@@ -1,0 +1,1121 @@
+//@version=5
+strategy(title='€£$¥ Ichimoku v14', shorttitle='€£$¥ Ichimoku v14', overlay=true, pyramiding=0, initial_capital=1000, currency=currency.USD, default_qty_type=strategy.percent_of_equity, default_qty_value=80, commission_type=strategy.commission.percent, commission_value=0.04, calc_on_order_fills=true, calc_on_every_tick=true)
+
+// ============================================
+// V14 - STREAMLINED ICHIMOKU STRATEGY
+// 
+// Based on V13 with 6-Hour Breakeven protection
+// Focus on proven Ichimoku signals with proper risk management
+// ============================================
+
+// ============================================
+// HISTORICAL ENHANCER HELPERS (SAME AS V12)
+// ============================================
+
+var string last_entry_cid = na
+
+number_or_null(value, fmt) =>
+    na(value) ? "null" : str.tostring(value, fmt)
+
+percent_or_null(value) =>
+    number_or_null(value, "#.####")
+
+bool_to_json(value) =>
+    value ? "true" : "false"
+
+string_to_json(value) =>
+    '"' + value + '"'
+
+session_label() =>
+    hour_val = hour(time, "UTC")
+    hour_val >= 0 and hour_val < 7 ? "Asia" :
+     hour_val < 13 ? "Europe" :
+     hour_val < 21 ? "US" :
+     "Asia-Late"
+
+weekday_label() =>
+    day_val = dayofweek
+    day_val == dayofweek.sunday ? "Sunday" :
+     day_val == dayofweek.monday ? "Monday" :
+     day_val == dayofweek.tuesday ? "Tuesday" :
+     day_val == dayofweek.wednesday ? "Wednesday" :
+     day_val == dayofweek.thursday ? "Thursday" :
+     day_val == dayofweek.friday ? "Friday" :
+     "Saturday"
+
+remove_trailing_comma(str_in) =>
+    str_len = str.length(str_in)
+    str_len > 0 and str.substring(str_in, str_len - 1, str_len) == "," ? str.substring(str_in, 0, str_len - 1) : str_in
+
+resolve_strategy_id(preset_name) =>
+    ticker_upper = str.upper(syminfo.ticker)
+    is_coinbase_btc_1h = preset_name == "1H BIP / BTC PERP (Coinbase USA)"
+    is_coinbase_eth_1h = preset_name == "1H ETP / ETH PERP (Coinbase USA)"
+    is_coinbase_sol_1h = preset_name == "1H SLP / SOL PERP (Coinbase USA)"
+    is_coinbase_xrp_1h = preset_name == "1H XPP / XRP PERP (Coinbase USA)"
+    is_coinbase_eth = str.contains(ticker_upper, "ETP") or str.contains(ticker_upper, "ETH-PERP") or preset_name == "5Min ETP / ETH PERP (Coinbase USA)"
+    is_coinbase_sol = str.contains(ticker_upper, "SLP") or str.contains(ticker_upper, "SOL-PERP") or preset_name == "5Min SLP / SOL PERP (Coinbase USA)"
+    is_coinbase_xrp = str.contains(ticker_upper, "XPP") or str.contains(ticker_upper, "XRP-PERP") or preset_name == "5Min XPP / XRP PERP (Coinbase USA)"
+    is_coinbase_btc = str.contains(ticker_upper, "BIP") or str.contains(ticker_upper, "BTC-PERP") or preset_name == "5Min BIP / BTC PERP (Coinbase USA)"
+    is_binance = str.contains(ticker_upper, "BINANCE") or str.contains(ticker_upper, "BTCUSDT")
+    is_coinbase_btc_1h ? "ichimoku-coinbase-btc-1h" :
+     is_coinbase_eth_1h ? "ichimoku-coinbase-eth-1h" :
+     is_coinbase_sol_1h ? "ichimoku-coinbase-sol-1h" :
+     is_coinbase_xrp_1h ? "ichimoku-coinbase-xrp-1h" :
+     is_coinbase_eth ? "ichimoku-coinbase-eth-5m" :
+     is_coinbase_sol ? "ichimoku-coinbase-sol-5m" :
+     is_coinbase_xrp ? "ichimoku-coinbase-xrp-5m" :
+     is_binance ? "ichimoku-binance-5m" :
+     is_coinbase_btc ? "ichimoku-coinbase-btc-5m" :
+     "ichimoku-coinbase-btc-5m"
+
+// ============================================
+// TIMEFRAME PRESET SELECTION (SAME AS V12)
+// ============================================
+
+preset = input.string("5Min BIP / BTC PERP (Coinbase USA)", "⚡ Timeframe Preset", options=["5Min BIP / BTC PERP (Coinbase USA)", "1H BIP / BTC PERP (Coinbase USA)", "5Min ETP / ETH PERP (Coinbase USA)", "1H ETP / ETH PERP (Coinbase USA)", "5Min SLP / SOL PERP (Coinbase USA)", "1H SLP / SOL PERP (Coinbase USA)", "5Min XPP / XRP PERP (Coinbase USA)", "1H XPP / XRP PERP (Coinbase USA)", "5Min (Coinbase INTX) BTCUSDC.P", "15Min (Coinbase INTX) BTCUSDC.P", "5Min (Binance US) BTCUSDT.P", "15Min (Binance US) BTCUSDT.P", "5Min (Kraken US) BTCUSD.P"], tooltip="Select your trading pair and timeframe. Preset values will be auto-applied.", group="🎯 TIMEFRAME PRESET")
+use_preset_values = input.bool(true, "✅ Use Preset Defaults", tooltip="AUTO-APPLY preset values (recommended). Uncheck to use manual inputs below.", group="🎯 TIMEFRAME PRESET")
+
+strategy_id_override = input.string("", "Strategy ID Override (optional)", tooltip="Leave blank to auto-detect: BTC → ichimoku-coinbase-btc-5m, ETH → ichimoku-coinbase-eth-5m, Binance → ichimoku-binance-5m.", group="🔗 Webhook / Alerts")
+strategy_id_for_alerts = str.length(strategy_id_override) > 0 ? strategy_id_override : resolve_strategy_id(preset)
+
+// ============================================
+// ICHIMOKU SETTINGS
+// ============================================
+
+// Manual inputs - YOUR OPTIMIZED BTC V14 SETTINGS AS DEFAULTS
+conversionPeriods_input = input.int(4, "Tenkan", minval=1, tooltip="Default: 4 (Optimized BTC v14). Preset auto-sets per timeframe.", group="☁️ Ichimoku")
+basePeriods_input = input.int(12, "Kijun", minval=1, tooltip="Default: 12 (Optimized BTC v14). Preset auto-sets per timeframe.", group="☁️ Ichimoku")
+laggingSpan2Periods_input = input.int(15, "Senkou B", minval=1, tooltip="Default: 15 (Optimized BTC v14). Preset auto-sets per timeframe.", group="☁️ Ichimoku")
+displacement_input = input.int(3, "Displacement", minval=1, tooltip="Default: 3 (Optimized BTC v14). Preset auto-sets per timeframe.", group="☁️ Ichimoku")
+
+// Apply preset or manual values - V14 OPTIMIZED BTC PRESET
+conversionPeriods = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 4 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 6 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 16 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 2 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 16 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 4 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 13 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 5 : preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 15 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 11 : 9) : conversionPeriods_input
+basePeriods = use_preset_values ? (preset == "5Min (Binance US) BTCUSDT.P" ? 12 : preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 12 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 8 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 12 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 5 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 5 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 9 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 12 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 11 : preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 11 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 10 : 26) : basePeriods_input
+laggingSpan2Periods = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 15 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 8 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 10 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 10 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 3 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 9 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 21 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 10 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 18 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 35 : 52) : laggingSpan2Periods_input
+displacement = use_preset_values ? (preset == "5Min (Binance US) BTCUSDT.P" ? 10 : preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 3 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 1 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 10 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 5 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 1 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 1 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 1 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 3 : preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 7 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 10 : 26) : displacement_input
+
+use_tk_cross = input.bool(true, "TK Cross Filter", group="☁️ Ichimoku")
+use_cloud_filter = input.bool(true, "Cloud Filter", group="☁️ Ichimoku")
+use_chikou_filter = input.bool(true, "Chikou Filter", group="☁️ Ichimoku")
+use_cloud_color = input.bool(true, "Cloud Color Filter", group="☁️ Ichimoku")
+
+use_adx_filter = input.bool(true, "ADX Filter", group="☁️ Ichimoku")
+adx_length_input = input.int(1, "ADX Length", minval=1, tooltip="Default: 1 (Optimized BTC v14). Preset auto-sets per timeframe.", group="☁️ Ichimoku")
+adx_threshold_input = input.float(1, "ADX Threshold", minval=1, maxval=50, tooltip="Default: 1 (Optimized BTC v14). Basic ADX threshold requirement.", group="☁️ Ichimoku")
+use_adx_acceleration = input.bool(false, "ADX Acceleration Filter", tooltip="Requires ADX to be increasing over 2 bars (trend strengthening)", group="☁️ Ichimoku")
+adx_acceleration_threshold = input.float(25.0, "ADX Acceleration Threshold", minval=1.0, maxval=100.0, step=0.5, tooltip="ADX threshold when acceleration is required (1.0-100.0)", group="☁️ Ichimoku")
+
+// ============================================
+// TRADING HOURS / ENTRY WINDOW CONTROL
+// ============================================
+use_weekend_entry_block_3_input = input.bool(true, "Disable Weekend Entries Fri 04:00AM PT - Mon 01:00AM PT", tooltip="Extended weekend block (recommended)", group="⏰ WEEKEND & DAILY BLOCKS")
+use_evening_entry_block_input = input.bool(true, "Disable Entries 20:00-1:00 8PM PT-1AM PT", tooltip="Blocks NEW entries from 20:00 (8PM) America/Los_Angeles to 01:00 (1AM) America/Los_Angeles daily. Exits always allowed.", group="⏰ WEEKEND & DAILY BLOCKS")
+use_news_filter_input = input.bool(true, "📰 News Volatility Filter 8-9AM PT", tooltip="Avoids market open chaos and news-driven volatility. +3% gain, +5% accuracy in testing.", group="⏰ WEEKEND & DAILY BLOCKS")
+
+// Apply preset or manual time filter values
+use_weekend_entry_block_3 = use_preset_values ? (preset == "1H BIP / BTC PERP (Coinbase USA)" or preset == "1H ETP / ETH PERP (Coinbase USA)" or preset == "1H SLP / SOL PERP (Coinbase USA)" or preset == "1H XPP / XRP PERP (Coinbase USA)" ? true : use_weekend_entry_block_3_input) : use_weekend_entry_block_3_input
+use_evening_entry_block = use_preset_values ? (preset == "1H BIP / BTC PERP (Coinbase USA)" or preset == "1H ETP / ETH PERP (Coinbase USA)" or preset == "1H SLP / SOL PERP (Coinbase USA)" or preset == "1H XPP / XRP PERP (Coinbase USA)" ? true : use_evening_entry_block_input) : use_evening_entry_block_input
+use_news_filter = use_preset_values ? (preset == "1H BIP / BTC PERP (Coinbase USA)" or preset == "1H ETP / ETH PERP (Coinbase USA)" or preset == "1H SLP / SOL PERP (Coinbase USA)" or preset == "1H XPP / XRP PERP (Coinbase USA)" ? true : use_news_filter_input) : use_news_filter_input
+
+// LA timezone variables for weekend block
+la_hour = hour(time, "America/Los_Angeles")
+la_year = year(time, "America/Los_Angeles")
+la_month = month(time, "America/Los_Angeles")
+la_day = dayofmonth(time, "America/Los_Angeles")
+la_midday = timestamp("America/Los_Angeles", la_year, la_month, la_day, 12, 0)
+la_dow = dayofweek(la_midday)
+
+// Weekend block 3: Friday 04:00 PT → Monday 01:00 PT
+weekend_block_active = use_weekend_entry_block_3 and ((la_dow == dayofweek.friday and la_hour >= 4) or (la_dow == dayofweek.saturday) or (la_dow == dayofweek.sunday) or (la_dow == dayofweek.monday and la_hour < 1))
+
+// Evening block: Block entries 20:00 PT (8PM) - 01:00 PT (1AM) daily
+evening_block_active = use_evening_entry_block and (la_hour >= 20 or la_hour < 1)
+
+// Entry window is OK if no blocks are active
+entry_window_ok = not weekend_block_active and not evening_block_active
+
+// Apply preset or manual ADX - V14 OPTIMIZED BTC PRESET
+// FIXED: BTC ADX length changed from 1 to 13 (Dec 12, 2025) - ADX length 1 produces unstable values (100.00)
+// NOTE: SOL 1H and XRP 1H currently use ADX length 1 - may need review after backtesting
+// ADX length 1 can produce unstable values (100.00) - safeguard added below to cap at 99.99
+adx_length = use_preset_values ? (preset == "5Min (Binance US) BTCUSDT.P" ? 13 : preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 13 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 3 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 13 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 10 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 2 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 3 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 1 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 3 : preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 25 : 14) : adx_length_input
+adx_threshold = use_preset_values ? (preset == "5Min (Binance US) BTCUSDT.P" ? 1.0 : preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 1.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 3.0 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 14.0 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 10.0 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 1.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 3.0 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 1.0 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 3.0 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 12.0 : preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 10.0 : 20.0) : adx_threshold_input
+
+// ============================================
+// RSI FILTER
+// ============================================
+
+use_rsi_filter_input = input.bool(true, "RSI Filter", tooltip="Default: ON (Optimized BTC v14). Preset auto-sets per timeframe.", group="📊 RSI Filter")
+rsi_length_input = input.int(3, "RSI Length", minval=1, tooltip="Default: 3 (Optimized BTC v14). Preset auto-sets per timeframe.", group="📊 RSI Filter")
+rsi_overbought_input = input.float(70, "RSI Overbought", minval=60, maxval=85, tooltip="Default: 70 (Optimized BTC v14). Don't buy when RSI > this.", group="📊 RSI Filter")
+rsi_oversold_input = input.float(30, "RSI Oversold", minval=15, maxval=40, tooltip="Default: 30 (Optimized BTC v14). Don't sell when RSI < this.", group="📊 RSI Filter")
+rsi_avoid_extreme_input = input.bool(true, "Avoid Extreme RSI", tooltip="Default: ON. Enable RSI overbought/oversold filtering.", group="📊 RSI Filter")
+
+// Apply preset or manual RSI values - V14 OPTIMIZED BTC PRESET
+use_rsi_filter = use_preset_values ? (preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min BIP / BTC PERP (Coinbase USA)" or preset == "1H BIP / BTC PERP (Coinbase USA)" or preset == "5Min ETP / ETH PERP (Coinbase USA)" or preset == "1H ETP / ETH PERP (Coinbase USA)" or preset == "5Min SLP / SOL PERP (Coinbase USA)" or preset == "1H SLP / SOL PERP (Coinbase USA)" or preset == "5Min XPP / XRP PERP (Coinbase USA)" or preset == "1H XPP / XRP PERP (Coinbase USA)" or preset == "5Min (Kraken US) BTCUSD.P" or preset == "5Min (Binance US) BTCUSDT.P" or preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P") : use_rsi_filter_input
+rsi_length = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 3 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 5 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" ? 7 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 9 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 7 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 5 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 3 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 7 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 7 : preset == "5Min (Kraken US) BTCUSD.P" ? 7 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 10 : 14) : rsi_length_input
+rsi_overbought = use_preset_values ? (preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" ? 65.0 : preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 70.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 65.0 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 60.0 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 60.0 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 60.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 85.0 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 60.0 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 60.0 : preset == "5Min (Kraken US) BTCUSD.P" ? 65.0 : 75.0) : rsi_overbought_input
+rsi_oversold = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 30.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 29.0 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" ? 31.0 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 30.0 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 20.0 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 40.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 18.0 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 35.0 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 33.0 : preset == "5Min (Kraken US) BTCUSD.P" ? 30.0 : 25.0) : rsi_oversold_input
+rsi_avoid_extreme = use_preset_values ? true : rsi_avoid_extreme_input
+
+// ============================================
+// RSI EXIT
+// ============================================
+
+use_rsi_exit_input = input.bool(true, "Enable RSI Exit", tooltip="Default: ON. Closes positions when RSI crosses exit thresholds.", group="📈 RSI Exit")
+rsi_exit_long_input = input.float(30.0, "Long Exit RSI Below", minval=0, maxval=100, step=0.1, tooltip="Default: 30 (Optimized BTC v14). Close longs when RSI falls below this value.", group="📈 RSI Exit")
+rsi_exit_short_input = input.float(74.0, "Short Exit RSI Above", minval=0, maxval=100, step=0.1, tooltip="Default: 74 (Optimized BTC v14). Close shorts when RSI rises above this value.", group="📈 RSI Exit")
+rsi_exit_activation_pct_input = input.float(0.7, "RSI Exit Activation %", minval=0.0, maxval=20.0, step=0.1, tooltip="Default: 0.7% (Optimized BTC v14). RSI exit only activates once unrealized profit reaches this percent.", group="📈 RSI Exit")
+
+use_rsi_exit_default = preset == "5Min ETP / ETH PERP (Coinbase USA)" or preset == "1H ETP / ETH PERP (Coinbase USA)" or preset == "1H BIP / BTC PERP (Coinbase USA)" or preset == "1H SLP / SOL PERP (Coinbase USA)" or preset == "1H XPP / XRP PERP (Coinbase USA)" ? true : not (preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P")
+
+use_rsi_exit = (use_preset_values ? use_rsi_exit_default : use_rsi_exit_input) and use_rsi_exit_input
+rsi_exit_long = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 30.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 40.0 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 25.0 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 50.0 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 20.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 30.0 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 25.0 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 45.0 : 45.0) : rsi_exit_long_input
+rsi_exit_short = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 74.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 60.0 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 65.0 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 50.0 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 80.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 77.0 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 75.0 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 55.0 : 55.0) : rsi_exit_short_input
+rsi_exit_activation_pct = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 0.7 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.1 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 0.2 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 0.1 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 0.3 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 0.1 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 0.1 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 0.1 : 1.5) : rsi_exit_activation_pct_input
+
+// ============================================
+// RISK MANAGEMENT
+// ============================================
+
+stop_mode_input = input.string("ATR-Based", "Stop Loss Mode", options=["Fixed %", "ATR-Based"], tooltip="Default: ATR-Based (Optimized BTC v14). Preset auto-sets per timeframe.", group="⚠️ Risk Management")
+stop_loss_pct_input = input.float(1.5, "Stop Loss %", minval=0.5, maxval=10, step=0.1, tooltip="Default: 1.5% (Optimized BTC v14). Used when Fixed % mode selected.", group="⚠️ Risk Management")
+take_profit_pct_input = input.float(4.0, "Take Profit %", minval=2, maxval=20, step=0.5, tooltip="Default: 4% (Optimized BTC v14). Used when Fixed % mode selected.", group="⚠️ Risk Management")
+atr_length_input = input.int(8, "ATR Length", minval=1, tooltip="Default: 8 (Optimized BTC v14). Used when ATR-Based mode selected.", group="⚠️ Risk Management")
+atr_mult_input = input.float(13.0, "ATR Multiplier", minval=1, maxval=20, step=0.1, tooltip="Default: 13.0 (Optimized BTC v14). Used when ATR-Based mode selected.", group="⚠️ Risk Management")
+
+// Apply preset or manual risk management values - V14 OPTIMIZED BTC PRESET
+stop_mode = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? "ATR-Based" : preset == "1H BIP / BTC PERP (Coinbase USA)" ? "ATR-Based" : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? "Fixed %" : preset == "5Min ETP / ETH PERP (Coinbase USA)" or preset == "1H ETP / ETH PERP (Coinbase USA)" or preset == "5Min SLP / SOL PERP (Coinbase USA)" or preset == "1H SLP / SOL PERP (Coinbase USA)" or preset == "5Min XPP / XRP PERP (Coinbase USA)" or preset == "1H XPP / XRP PERP (Coinbase USA)" ? "ATR-Based" : "ATR-Based") : stop_mode_input
+stop_loss_pct = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 1.5 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 1.5 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 1.5 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 1.4 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 1.4 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 2.5 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 2.0 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 1.5 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 1.5 : 1.5) : stop_loss_pct_input
+take_profit_pct = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 4.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 4.0 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 4.0 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 4.0 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 3.5 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 7.5 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 7.0 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 6.5 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 4.0 : 5.0) : take_profit_pct_input
+atr_length = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 8 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 4 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 8 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 2 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 3 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 2 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 2 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 2 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 6 : 14) : atr_length_input
+atr_mult = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 13.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 2.6 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 10.0 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 6.0 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 12.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 3.4 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 13.0 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 5.0 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 8.0 : 8.0) : atr_mult_input
+
+// ============================================
+// BREAKEVEN PROTECTION
+// ============================================
+
+use_breakeven = input.bool(true, "Breakeven Protection", tooltip="Default: ON. Lock in small profit after move.", group="🛡️ Breakeven Protection")
+breakeven_trigger_input = input.float(1.5, "Breakeven Trigger %", minval=0.05, maxval=5, step=0.05, tooltip="Default: 1.5% (Optimized BTC v14). Preset auto-sets per timeframe. Granular control: 0.05% increments (0.05, 0.1, 0.15, 0.2, etc.).", group="🛡️ Breakeven Protection")
+breakeven_level_input = input.float(0.3, "Breakeven Lock %", minval=0, maxval=2, step=0.05, tooltip="Default: 0.3% (Optimized BTC v14). Preset auto-sets per timeframe.", group="🛡️ Breakeven Protection")
+
+// Apply preset or manual breakeven - V14 OPTIMIZED BTC PRESET
+breakeven_trigger = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 1.5 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 1.5 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" ? 1.5 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 1.5 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 1.6 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 3.5 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 1.8 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 1.5 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 1.5 : preset == "5Min (Kraken US) BTCUSD.P" ? 0.5 : 2.0) : breakeven_trigger_input
+breakeven_level = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 0.3 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.5 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 0.5 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 1.1 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 1.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 1.5 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 0.5 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 0.8 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 0.5 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 0.05 : 0.5) : breakeven_level_input
+
+// 6-Hour Breakeven Protection
+use_6hour_breakeven_input = input.bool(false, "6-Hour Breakeven Exit", tooltip="Default: OFF. Automatically closes positions within +0.1% to +0.5% gain after being open for 6+ hours. Prevents losses from trades held too long. DISABLED for 5min presets by default - needs review/testing.", group="🛡️ Breakeven Protection")
+breakeven_6h_min_pct_input = input.float(0.1, "6H Breakeven Min %", minval=0.0, maxval=2.0, step=0.1, tooltip="Default: 0.1%. Minimum profit % to trigger 6-hour breakeven exit.", group="🛡️ Breakeven Protection")
+breakeven_6h_max_pct_input = input.float(0.5, "6H Breakeven Max %", minval=0.1, maxval=2.0, step=0.1, tooltip="Default: 0.5%. Maximum profit % to trigger 6-hour breakeven exit.", group="🛡️ Breakeven Protection")
+
+// Apply preset or manual 6-hour breakeven - DISABLED by default for all 5min presets (needs review/testing)
+use_6hour_breakeven = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" or preset == "5Min ETP / ETH PERP (Coinbase USA)" or preset == "5Min SLP / SOL PERP (Coinbase USA)" or preset == "5Min XPP / XRP PERP (Coinbase USA)" ? false : preset == "1H BIP / BTC PERP (Coinbase USA)" or preset == "1H ETP / ETH PERP (Coinbase USA)" or preset == "1H SLP / SOL PERP (Coinbase USA)" or preset == "1H XPP / XRP PERP (Coinbase USA)" ? true : true) : use_6hour_breakeven_input
+// UPDATED: Range detects when price ENTERS range using calc_on_every_tick=true for granular monitoring
+breakeven_6h_min_pct = use_preset_values ? (preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.3 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 0.4 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 0.4 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 0.3 : 0.1) : breakeven_6h_min_pct_input
+breakeven_6h_max_pct = use_preset_values ? (preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.4 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 0.4 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 0.5 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 0.4 : 0.5) : breakeven_6h_max_pct_input
+
+// 3-Hour Breakeven Protection (Configured for v14 1H presets)
+use_3hour_breakeven_input = input.bool(false, "3-Hour Breakeven Exit", tooltip="Default: OFF. Automatically closes positions within a specified profit range after being open for 3+ hours, if profit has reached the trigger threshold. Locks in small profits for trades that have moved into profit but haven't moved significantly further.", group="🛡️ Breakeven Protection")
+breakeven_3h_min_profit_input = input.float(0.3, "3H Breakeven Trigger %", minval=0.0, maxval=5.0, step=0.05, tooltip="Default: 0.3%. Minimum profit % that must be reached to trigger 3-hour breakeven exit. Preset auto-sets per timeframe.", group="🛡️ Breakeven Protection")
+breakeven_3h_min_pct_input = input.float(0.02, "3H Breakeven Lock %", minval=0.0, maxval=2.0, step=0.01, tooltip="Default: 0.02%. Minimum profit % to exit via 3-hour breakeven. Preset auto-sets per timeframe.", group="🛡️ Breakeven Protection")
+breakeven_3h_max_pct_input = input.float(0.10, "3H Breakeven Max %", minval=0.01, maxval=2.0, step=0.01, tooltip="Default: 0.10%. Maximum profit % to exit via 3-hour breakeven.", group="🛡️ Breakeven Protection")
+
+// Apply preset or manual 3-hour breakeven - DISABLED for all presets by default
+use_3hour_breakeven = use_preset_values ? false : use_3hour_breakeven_input
+breakeven_3h_min_profit = use_preset_values ? (preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.45 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 0.45 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 0.45 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 0.30 : 0.3) : breakeven_3h_min_profit_input
+breakeven_3h_min_pct = use_preset_values ? (preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.10 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 0.10 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 0.10 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 0.05 : 0.02) : breakeven_3h_min_pct_input
+breakeven_3h_max_pct = use_preset_values ? (preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.15 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 0.15 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 0.15 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 0.10 : 0.10) : breakeven_3h_max_pct_input
+
+// ============================================
+// TRAILING STOP
+// ============================================
+
+use_trailing = input.bool(true, "Trailing Stop", tooltip="Default: ON. Locks in profits as trade moves favorably.", group="📉 Trailing Stop")
+trailing_trigger_input = input.float(2.0, "Trail Trigger %", minval=0.1, maxval=10, step=0.1, tooltip="Default: 2% (Optimized BTC v14). Preset auto-sets per timeframe.", group="📉 Trailing Stop")
+trailing_dist_input = input.float(1.0, "Trail Distance %", minval=0.01, maxval=5, step=0.01, tooltip="Default: 1% (Optimized BTC v14). Preset auto-sets per timeframe.", group="📉 Trailing Stop")
+
+// Apply preset or manual trailing - V14 OPTIMIZED BTC PRESET
+trailing_trigger = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 2.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 1.5 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" ? 5.0 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 1.5 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 2.4 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 4.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 1.8 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 1.5 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 1.5 : preset == "5Min (Kraken US) BTCUSD.P" ? 5.0 : 2.0) : trailing_trigger_input
+trailing_dist = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 1.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.8 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 0.05 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 1.3 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 0.5 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 2.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 1.2 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 1.0 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 1.5 : 2.5) : trailing_dist_input
+
+// ============================================
+// ICHIMOKU CALCULATIONS (SAME AS V12)
+// ============================================
+
+middleDonchian(len) =>
+    (ta.lowest(low, len) + ta.highest(high, len)) / 2
+
+tenkan = middleDonchian(conversionPeriods)
+kijun = middleDonchian(basePeriods)
+senkouA = (tenkan + kijun) / 2
+senkouB = middleDonchian(laggingSpan2Periods)
+chikou = close
+
+cloud_top = math.max(senkouA, senkouB)
+cloud_bottom = math.min(senkouA, senkouB)
+cloud_bullish = senkouA > senkouB
+cloud_bearish = senkouA < senkouB
+
+tk_cross_up = ta.crossover(tenkan, kijun)
+tk_cross_down = ta.crossunder(tenkan, kijun)
+
+price_above_cloud = close > cloud_top
+price_below_cloud = close < cloud_bottom
+
+chikou_bullish = chikou > close[displacement]
+chikou_bearish = chikou < close[displacement]
+
+[diPlus, diMinus, adx_raw] = ta.dmi(adx_length, adx_length)
+// Cap ADX at 99.99 to prevent invalid 100.00 values (caused by very short ADX lengths like 1)
+// ADX = 100.00 is typically a calculation error, not a valid extreme trend
+adx = adx_raw >= 100 ? 99.99 : adx_raw
+strong_trend = adx >= adx_threshold
+
+// RSI
+rsi = ta.rsi(close, rsi_length)
+rsi_ok_long = use_rsi_filter and rsi_avoid_extreme ? rsi < rsi_overbought : true
+rsi_ok_short = use_rsi_filter and rsi_avoid_extreme ? rsi > rsi_oversold : true
+long_profit_pct_for_exit = strategy.position_size > 0 and strategy.position_avg_price != 0 ? (close - strategy.position_avg_price) / strategy.position_avg_price * 100 : 0
+short_profit_pct_for_exit = strategy.position_size < 0 and strategy.position_avg_price != 0 ? (strategy.position_avg_price - close) / strategy.position_avg_price * 100 : 0
+rsi_exit_long_condition = use_rsi_exit and strategy.position_size > 0 and long_profit_pct_for_exit >= rsi_exit_activation_pct and rsi <= rsi_exit_long
+rsi_exit_short_condition = use_rsi_exit and strategy.position_size < 0 and short_profit_pct_for_exit >= rsi_exit_activation_pct and rsi >= rsi_exit_short
+
+// ATR (for dynamic stops)
+atr = ta.atr(atr_length)
+
+// ============================================
+// V13 ENHANCED FILTERS CALCULATIONS
+// ============================================
+
+// V13 Enhanced time filters (only News Volatility remains)
+news_volatility_active = use_news_filter and (la_hour >= 8 and la_hour <= 9)
+
+// Time filters block entries when ANY active filter is triggered
+time_filters_ok = not news_volatility_active
+
+// ADX Acceleration Filter (grouped with main ADX filter)
+trend_accelerating = ta.change(adx, 2) > 0
+adx_acceleration_ok = use_adx_acceleration ? (adx >= adx_acceleration_threshold and trend_accelerating) : true
+
+// VWAP for plotting (optional)
+vwap_price = ta.vwap(hlc3)
+
+
+// ============================================
+// V13 ENHANCED HISTORICAL ENHANCER DATA
+// Based on ETrade Priority Ranking Formula (+0.772 VWAP, +0.609 RS correlation)
+// ============================================
+
+// === VOLUME INDICATORS (Multiple timeframes for surge detection) ===
+vol_sma = ta.sma(volume, 20)
+vol_sma_5 = ta.sma(volume, 5)
+vol_sma_10 = ta.sma(volume, 10)
+vol_std = ta.stdev(volume, 20)
+volume_delta = volume - volume[1]
+volume_zscore = not na(vol_std) and vol_std != 0 ? (volume - vol_sma) / vol_std : na
+volume_ratio_5 = not na(vol_sma_5) and vol_sma_5 != 0 ? volume / vol_sma_5 : na
+volume_ratio_10 = not na(vol_sma_10) and vol_sma_10 != 0 ? volume / vol_sma_10 : na
+volume_ratio_20 = not na(vol_sma) and vol_sma != 0 ? volume / vol_sma : na
+volume_acceleration = not na(volume_ratio_5) and not na(volume_ratio_5[1]) and volume_ratio_5[1] != 0 ? volume_ratio_5 / volume_ratio_5[1] : na
+
+// === VWAP INDICATORS (Strongest predictor +0.772 correlation) ===
+vwap_current = ta.vwap(hlc3)
+vwap_distance_pct = close != 0 ? ((close - vwap_current) / close) * 100 : na
+vwap_momentum = not na(vwap_current[3]) and vwap_current[3] != 0 ? (vwap_current - vwap_current[3]) / vwap_current[3] * 100 : na
+vwap_slope = ta.change(vwap_current, 3)
+price_vs_vwap_direction = close > vwap_current ? 1 : close < vwap_current ? -1 : 0
+
+// === MOMENTUM INDICATORS (Multiple timeframes) ===
+momentum_1bar = close[1] != 0 ? (close - close[1]) / close[1] * 100 : na
+momentum_3bar = close[3] != 0 ? (close - close[3]) / close[3] * 100 : na
+momentum_5bar = close[5] != 0 ? (close - close[5]) / close[5] * 100 : na
+momentum_10bar = close[10] != 0 ? (close - close[10]) / close[10] * 100 : na
+momentum_value = close - close[5]
+
+// === EMA TREND INDICATORS ===
+// Short-term EMAs (existing)
+ema_8 = ta.ema(close, 8)
+ema_21 = ta.ema(close, 21)
+ema_50 = ta.ema(close, 50)
+ema_trend_8_21 = ema_8 > ema_21 ? 1 : -1
+ema_trend_21_50 = ema_21 > ema_50 ? 1 : -1
+price_vs_ema8_pct = ema_8 != 0 ? (close - ema_8) / ema_8 * 100 : na
+price_vs_ema21_pct = ema_21 != 0 ? (close - ema_21) / ema_21 * 100 : na
+price_vs_ema50_pct = ema_50 != 0 ? (close - ema_50) / ema_50 * 100 : na
+
+// Long-term EMAs (for trend alignment - 2, 20, 55 day)
+ema_2 = ta.ema(close, 2)
+ema_20 = ta.ema(close, 20)
+ema_55 = ta.ema(close, 55)
+ema_trend_2_20 = ema_2 > ema_20 ? 1 : -1  // 2 EMA vs 20 EMA trend
+ema_trend_20_55 = ema_20 > ema_55 ? 1 : -1  // 20 EMA vs 55 EMA trend
+ema_trend_55_20 = ema_55 > ema_20 ? 1 : -1  // 55 EMA vs 20 EMA (bearish when 55 > 20)
+price_vs_ema2_pct = ema_2 != 0 ? (close - ema_2) / ema_2 * 100 : na
+price_vs_ema20_pct = ema_20 != 0 ? (close - ema_20) / ema_20 * 100 : na
+price_vs_ema55_pct = ema_55 != 0 ? (close - ema_55) / ema_55 * 100 : na
+
+// === CANDLE STRUCTURE INDICATORS (Immediate reversal detection) ===
+candle_body = close - open
+candle_body_pct = open != 0 ? (close - open) / open * 100 : na
+candle_range = high - low
+candle_body_to_range = candle_range != 0 ? math.abs(candle_body) / candle_range * 100 : na
+upper_wick = high - math.max(open, close)
+lower_wick = math.min(open, close) - low
+upper_wick_pct = candle_range != 0 ? upper_wick / candle_range * 100 : na
+lower_wick_pct = candle_range != 0 ? lower_wick / candle_range * 100 : na
+wick_balance = candle_range != 0 ? (upper_wick - lower_wick) / candle_range : na
+candle_strength = candle_range != 0 ? candle_body / candle_range * 100 : na  // Positive = bullish, Negative = bearish
+
+// === ICHIMOKU-SPECIFIC STRENGTH INDICATORS ===
+tk_separation_pct = close != 0 ? (tenkan - kijun) / close * 100 : na
+tk_separation_abs = math.abs(tenkan - kijun)
+cloud_thickness = cloud_top - cloud_bottom
+cloud_thickness_pct = close != 0 ? cloud_thickness / close * 100 : na
+cloud_momentum = senkouA[5] != 0 ? (senkouA - senkouA[5]) / senkouA[5] * 100 : na
+price_vs_tenkan_pct = tenkan != 0 ? (close - tenkan) / tenkan * 100 : na
+price_vs_kijun_pct = kijun != 0 ? (close - kijun) / kijun * 100 : na
+price_distance_from_cloud = price_above_cloud ? (close - cloud_top) : price_below_cloud ? (close - cloud_bottom) : 0
+price_distance_from_cloud_pct = close != 0 ? price_distance_from_cloud / close * 100 : na
+chikou_distance = close - close[displacement]
+chikou_distance_pct = close[displacement] != 0 ? chikou_distance / close[displacement] * 100 : na
+
+// === QUICK EXIT PREDICTION INDICATORS (V14 NEW) ===
+// Bars since T/K cross - How fresh is the signal?
+bars_since_tk_cross_up = ta.barssince(tk_cross_up)
+bars_since_tk_cross_down = ta.barssince(tk_cross_down)
+bars_since_tk_cross = tk_cross_up ? 0 : tk_cross_down ? 0 : math.min(nz(bars_since_tk_cross_up, 999), nz(bars_since_tk_cross_down, 999))
+
+// T/K Cross Strength - Price gap at the cross moment (stronger cross = better signal)
+tk_cross_price_gap = math.abs(tenkan - kijun)
+tk_cross_strength_pct = close != 0 ? tk_cross_price_gap / close * 100 : na
+
+// Cloud Entry Angle - Is price entering/exiting cloud at steep or shallow angle?
+price_change_5bar = close - close[5]
+cloud_change_5bar = cloud_top - cloud_top[5]
+cloud_entry_angle = cloud_change_5bar != 0 ? price_change_5bar / math.abs(cloud_change_5bar) : na
+
+// Recent Reversal Count - How many T/K crosses in last 20 bars? (choppy market = bad)
+tk_cross_count_20 = math.sum(tk_cross_up ? 1 : 0, 20) + math.sum(tk_cross_down ? 1 : 0, 20)
+
+// Tenkan Slope - Is Tenkan trending or flat?
+tenkan_slope = tenkan - tenkan[3]
+tenkan_slope_pct = tenkan[3] != 0 ? (tenkan - tenkan[3]) / tenkan[3] * 100 : na
+
+// Kijun Slope - Is Kijun trending or flat?
+kijun_slope = kijun - kijun[3]
+kijun_slope_pct = kijun[3] != 0 ? (kijun - kijun[3]) / kijun[3] * 100 : na
+
+// T/K Convergence/Divergence - Are T/K moving together or apart?
+tk_convergence = tk_separation_abs < tk_separation_abs[3] ? -1 : tk_separation_abs > tk_separation_abs[3] ? 1 : 0
+
+// Price Position in Range - Where is price in the recent range?
+highest_20 = ta.highest(high, 20)
+lowest_20 = ta.lowest(low, 20)
+range_20 = highest_20 - lowest_20
+price_position_in_range = range_20 != 0 ? (close - lowest_20) / range_20 * 100 : na
+
+// Cloud Future Direction - Is the future cloud bullish or bearish?
+future_cloud_bullish = senkouA[displacement] > senkouB[displacement]
+future_cloud_bearish = senkouA[displacement] < senkouB[displacement]
+
+// Senkou Span Cross Detection - Cloud twist incoming?
+senkou_cross_up = ta.crossover(senkouA, senkouB)
+senkou_cross_down = ta.crossunder(senkouA, senkouB)
+bars_since_senkou_cross = math.min(nz(ta.barssince(senkou_cross_up), 999), nz(ta.barssince(senkou_cross_down), 999))
+
+// Price vs Cloud Center - Distance from cloud midpoint
+cloud_center = (cloud_top + cloud_bottom) / 2
+price_vs_cloud_center_pct = cloud_center != 0 ? (close - cloud_center) / cloud_center * 100 : na
+
+// Ichimoku Alignment Score - How many Ichimoku conditions are aligned?
+ichimoku_bullish_score = (price_above_cloud ? 1 : 0) + (cloud_bullish ? 1 : 0) + (chikou_bullish ? 1 : 0) + (tenkan > kijun ? 1 : 0) + (close > tenkan ? 1 : 0)
+ichimoku_bearish_score = (price_below_cloud ? 1 : 0) + (cloud_bearish ? 1 : 0) + (chikou_bearish ? 1 : 0) + (tenkan < kijun ? 1 : 0) + (close < tenkan ? 1 : 0)
+
+// Signal Quality Score - Composite score for signal strength (0-10)
+// ADX check uses valid range (20-99) to exclude invalid ADX = 100 values
+signal_quality_long = (tenkan > kijun ? 2 : 0) + (price_above_cloud ? 2 : 0) + (cloud_bullish ? 1 : 0) + (chikou_bullish ? 1 : 0) + (adx > 20 and adx < 100 ? 1 : 0) + (close > vwap_current ? 1 : 0) + (volume_ratio_5 > 1 ? 1 : 0) + (momentum_3bar > 0 ? 1 : 0)
+signal_quality_short = (tenkan < kijun ? 2 : 0) + (price_below_cloud ? 2 : 0) + (cloud_bearish ? 1 : 0) + (chikou_bearish ? 1 : 0) + (adx > 20 and adx < 100 ? 1 : 0) + (close < vwap_current ? 1 : 0) + (volume_ratio_5 > 1 ? 1 : 0) + (momentum_3bar < 0 ? 1 : 0)
+
+// === ADX/DMI MOMENTUM INDICATORS ===
+adx_change_1bar = adx - adx[1]
+adx_change_3bar = adx - adx[3]
+adx_acceleration = ta.change(adx, 2)
+di_spread = diPlus - diMinus
+di_spread_change = di_spread - di_spread[3]
+di_crossover_bars = ta.barssince(ta.crossover(diPlus, diMinus))
+di_crossunder_bars = ta.barssince(ta.crossunder(diPlus, diMinus))
+
+// === RSI MOMENTUM INDICATORS ===
+rsi_slope = ta.change(rsi)
+rsi_slope_3bar = rsi - rsi[3]
+rsi_acceleration = ta.change(rsi, 2)
+rsi_distance_from_50 = rsi - 50
+rsi_overbought_distance = rsi - rsi_overbought
+rsi_oversold_distance = rsi - rsi_oversold
+
+// === VOLATILITY INDICATORS ===
+volatility_20 = ta.stdev(close, 20)
+atr_to_volatility_ratio = not na(volatility_20) and volatility_20 != 0 ? atr / volatility_20 : na
+atr_pct_change = atr[1] != 0 ? (atr - atr[1]) / atr[1] * 100 : na
+range_pct = close != 0 ? ((high - low) / close) * 100 : na
+range_vs_atr = atr != 0 ? (high - low) / atr : na
+
+// === BOLLINGER BAND INDICATORS ===
+bb_basis = ta.sma(close, 20)
+bb_dev = ta.stdev(close, 20)
+bb_upper = bb_basis + bb_dev * 2
+bb_lower = bb_basis - bb_dev * 2
+bb_range = bb_upper - bb_lower
+bollinger_width = close != 0 ? bb_range / close : na
+bollinger_position = bb_range != 0 ? (close - bb_lower) / bb_range : na
+bollinger_squeeze = bollinger_width < ta.sma(bollinger_width, 20) * 0.8
+
+// === MACD INDICATORS ===
+[macd_line_v12, macd_signal, macd_hist] = ta.macd(close, 12, 26, 9)
+macd_hist_change = macd_hist - macd_hist[1]
+macd_hist_acceleration = ta.change(macd_hist, 2)
+macd_crossover_bars = ta.barssince(ta.crossover(macd_line_v12, macd_signal))
+macd_crossunder_bars = ta.barssince(ta.crossunder(macd_line_v12, macd_signal))
+
+// === STOCHASTIC INDICATORS ===
+stoch_k = ta.stoch(close, high, low, 14)
+stoch_d = ta.sma(stoch_k, 3)
+stoch_crossover = ta.crossover(stoch_k, stoch_d)
+stoch_crossunder = ta.crossunder(stoch_k, stoch_d)
+
+// === TREND STRENGTH COMPOSITE SCORE ===
+trend_flag_sum = (price_above_cloud ? 1.0 : 0.0) + (cloud_bullish ? 1.0 : 0.0) + (chikou_bullish ? 1.0 : 0.0) - (price_below_cloud ? 1.0 : 0.0) - (cloud_bearish ? 1.0 : 0.0) - (chikou_bearish ? 1.0 : 0.0)
+trend_strength_score = trend_flag_sum / 3.0 + adx / 50.0
+
+// === MULTI-TIMEFRAME ALIGNMENT SCORE ===
+mtf_alignment_score = (ema_trend_8_21 == 1 ? 1 : 0) + (ema_trend_21_50 == 1 ? 1 : 0) + (price_above_cloud ? 1 : 0) + (cloud_bullish ? 1 : 0) + (close > vwap_current ? 1 : 0)
+mtf_bearish_score = (ema_trend_8_21 == -1 ? 1 : 0) + (ema_trend_21_50 == -1 ? 1 : 0) + (price_below_cloud ? 1 : 0) + (cloud_bearish ? 1 : 0) + (close < vwap_current ? 1 : 0)
+
+// === HIGHER TIMEFRAME DATA (1H) ===
+htf_tenkan = request.security(syminfo.tickerid, "60", (ta.highest(high, 9) + ta.lowest(low, 9)) / 2)
+htf_kijun = request.security(syminfo.tickerid, "60", (ta.highest(high, 26) + ta.lowest(low, 26)) / 2)
+htf_senkouA = request.security(syminfo.tickerid, "60", ((ta.highest(high, 9) + ta.lowest(low, 9)) / 2 + (ta.highest(high, 26) + ta.lowest(low, 26)) / 2) / 2)
+htf_senkouB = request.security(syminfo.tickerid, "60", (ta.highest(high, 52) + ta.lowest(low, 52)) / 2)
+htf_cloud_top = math.max(htf_senkouA, htf_senkouB)
+htf_cloud_bottom = math.min(htf_senkouA, htf_senkouB)
+htf_cloud_bullish = htf_senkouA > htf_senkouB
+htf_rsi = request.security(syminfo.tickerid, "60", ta.rsi(close, 14))
+htf_adx = request.security(syminfo.tickerid, "60", ta.rma(math.abs(ta.change(high) - ta.change(low)), 14))
+
+// HTF Cloud Position (for Historical Enhancer data collection)
+price_vs_htf_cloud_bottom_pct = close != 0 ? ((close - htf_cloud_bottom) / close) * 100 : na
+price_vs_htf_cloud_top_pct = close != 0 ? ((close - htf_cloud_top) / close) * 100 : na
+
+// === DAILY REFERENCE DATA ===
+prev_day_high = request.security(syminfo.tickerid, "D", high[1])
+prev_day_low = request.security(syminfo.tickerid, "D", low[1])
+prev_day_close = request.security(syminfo.tickerid, "D", close[1])
+prev_day_range = prev_day_high - prev_day_low
+price_vs_prev_high_pct = prev_day_high != 0 ? (close - prev_day_high) / prev_day_high * 100 : na
+price_vs_prev_low_pct = prev_day_low != 0 ? (close - prev_day_low) / prev_day_low * 100 : na
+price_vs_prev_close_pct = prev_day_close != 0 ? (close - prev_day_close) / prev_day_close * 100 : na
+
+// ============================================
+// ENTRY SIGNALS (V12 BASE + V13 ENHANCEMENTS)
+// ============================================
+
+// Ichimoku long signal (SAME AS V12)
+ichimoku_long_signal = use_tk_cross ? tk_cross_up : tenkan > kijun
+ichimoku_short_signal = use_tk_cross ? tk_cross_down : tenkan < kijun
+
+// Entry Conditions
+long_condition_base = ichimoku_long_signal and (use_cloud_filter ? price_above_cloud : true) and (use_chikou_filter ? chikou_bullish : true) and (use_cloud_color ? cloud_bullish : true) and (use_adx_filter ? strong_trend : true) and rsi_ok_long and entry_window_ok
+
+short_condition_base = ichimoku_short_signal and (use_cloud_filter ? price_below_cloud : true) and (use_chikou_filter ? chikou_bearish : true) and (use_cloud_color ? cloud_bearish : true) and (use_adx_filter ? strong_trend : true) and rsi_ok_short and entry_window_ok
+
+// Final Entry Conditions with time filters and ADX acceleration
+long_condition = long_condition_base and time_filters_ok and adx_acceleration_ok
+
+short_condition = short_condition_base and time_filters_ok and adx_acceleration_ok
+
+// ============================================
+// POSITION MANAGEMENT (SAME AS V12)
+// ============================================
+
+var float entry_price = na
+var int entry_time = na
+var float current_stop = na
+var bool breakeven_set = false
+var bool trailing_active = false
+var string entry_type = ""
+var bool breakeven_6h_stop_set = false  // Track if 6H breakeven stop has been moved to max level
+var float breakeven_6h_stop_price = na  // Stop price at max level for 6H breakeven
+var float prev_profit_long = na  // Track previous profit for 6H breakeven range entry detection
+var float prev_profit_short = na  // Track previous profit for 6H breakeven range entry detection
+if strategy.position_size == 0
+    entry_price := na
+    entry_time := na
+    current_stop := na
+    breakeven_set := false
+    trailing_active := false
+    entry_type := ""
+    breakeven_6h_stop_set := false
+    breakeven_6h_stop_price := na
+    prev_profit_long := na
+    prev_profit_short := na
+
+if strategy.position_size != 0 and na(entry_price)
+    entry_price := strategy.opentrades.entry_price(0)
+    entry_time := time
+    entry_type := "ICHIMOKU"
+    
+    // ATR-based or fixed stop
+    if strategy.position_size > 0
+        current_stop := stop_mode == "ATR-Based" ? entry_price - (atr * atr_mult) : entry_price * (1 - stop_loss_pct / 100)
+    else
+        current_stop := stop_mode == "ATR-Based" ? entry_price + (atr * atr_mult) : entry_price * (1 + stop_loss_pct / 100)
+
+current_profit_long = strategy.position_size > 0 ? (close - entry_price) / entry_price * 100 : 0
+current_profit_short = strategy.position_size < 0 ? (entry_price - close) / entry_price * 100 : 0
+
+// Breakeven Protection
+if strategy.position_size > 0 and not na(entry_price) and use_breakeven and not breakeven_set and current_profit_long >= breakeven_trigger
+    current_stop := entry_price * (1 + breakeven_level / 100)
+    breakeven_set := true
+
+if strategy.position_size < 0 and not na(entry_price) and use_breakeven and not breakeven_set and current_profit_short >= breakeven_trigger
+    current_stop := entry_price * (1 - breakeven_level / 100)
+    breakeven_set := true
+
+// Trailing Stop
+if strategy.position_size > 0 and use_trailing and current_profit_long >= trailing_trigger
+    trailing_active := true
+    new_stop = close * (1 - trailing_dist / 100)
+    if new_stop > current_stop
+        current_stop := new_stop
+
+if strategy.position_size < 0 and use_trailing and current_profit_short >= trailing_trigger
+    trailing_active := true
+    new_stop = close * (1 + trailing_dist / 100)
+    if new_stop < current_stop
+        current_stop := new_stop
+
+// 3-Hour Breakeven Exit: Close positions within configured profit range after 3+ hours, if profit has reached trigger threshold (configured for 1H presets)
+if use_3hour_breakeven and strategy.position_size != 0 and not na(entry_time) and not na(entry_price)
+    hours_since_entry = (time - entry_time) / (1000 * 60 * 60)  // Convert milliseconds to hours
+    if hours_since_entry >= 3
+        // Check if profit has reached minimum threshold (0.3%)
+        if strategy.position_size > 0
+            // Long position: check if profit reached threshold, then exit if within range
+            if current_profit_long >= breakeven_3h_min_profit
+                if current_profit_long >= breakeven_3h_min_pct and current_profit_long <= breakeven_3h_max_pct
+                    strategy.close("LONG", comment="3H Breakeven")
+        else if strategy.position_size < 0
+            // Short position: check if profit reached threshold, then exit if within range
+            if current_profit_short >= breakeven_3h_min_profit
+                if current_profit_short >= breakeven_3h_min_pct and current_profit_short <= breakeven_3h_max_pct
+                    strategy.close("SHORT", comment="3H Breakeven")
+
+// 6-Hour Breakeven Exit: Close positions within configured profit range after 6+ hours
+// UPDATED: Now uses calc_on_every_tick=true to detect when price ENTERS the min-max range
+// Detects range entry by checking if current profit is in range AND previous profit was below min (or not in range)
+if use_6hour_breakeven and strategy.position_size != 0 and not na(entry_time) and not na(entry_price)
+    hours_since_entry = (time - entry_time) / (1000 * 60 * 60)  // Convert milliseconds to hours
+    if hours_since_entry >= 6
+        if strategy.position_size > 0
+            // Long position
+            // Check if profit is currently within range [min, max]
+            profit_in_range = current_profit_long >= breakeven_6h_min_pct and current_profit_long <= breakeven_6h_max_pct
+            // Check if profit was previously below min (or not tracked yet)
+            prev_was_below_min = na(prev_profit_long) or prev_profit_long < breakeven_6h_min_pct
+            // If profit enters the range (currently in range AND was previously below min), close immediately
+            if profit_in_range and prev_was_below_min
+                strategy.close("LONG", comment="6H Breakeven")
+            // If profit is above max, move stop loss to max level (lock in max profit)
+            else if current_profit_long > breakeven_6h_max_pct
+                // Calculate stop price at max level
+                max_stop_price = entry_price * (1 + breakeven_6h_max_pct / 100)
+                // Only update if we haven't set it yet, or if new stop is higher (better)
+                if not breakeven_6h_stop_set or max_stop_price > breakeven_6h_stop_price
+                    breakeven_6h_stop_price := max_stop_price
+                    breakeven_6h_stop_set := true
+                    // Update current_stop to max level (for display/logging)
+                    if max_stop_price > current_stop
+                        current_stop := max_stop_price
+                    // Set stop loss at max level using strategy.exit
+                    strategy.exit("6H Breakeven Stop", stop=max_stop_price, comment="6H Breakeven Stop at Max")
+                // Check if price has hit the stop (current price at or below stop)
+                if close <= breakeven_6h_stop_price
+                    strategy.close("LONG", comment="6H Breakeven Stop Hit")
+            // Update previous profit for next tick
+            prev_profit_long := current_profit_long
+        else if strategy.position_size < 0
+            // Short position
+            // Check if profit is currently within range [min, max]
+            profit_in_range = current_profit_short >= breakeven_6h_min_pct and current_profit_short <= breakeven_6h_max_pct
+            // Check if profit was previously below min (or not tracked yet)
+            prev_was_below_min = na(prev_profit_short) or prev_profit_short < breakeven_6h_min_pct
+            // If profit enters the range (currently in range AND was previously below min), close immediately
+            if profit_in_range and prev_was_below_min
+                strategy.close("SHORT", comment="6H Breakeven")
+            // If profit is above max, move stop loss to max level (lock in max profit)
+            else if current_profit_short > breakeven_6h_max_pct
+                // Calculate stop price at max level (for short, stop is above entry)
+                max_stop_price = entry_price * (1 - breakeven_6h_max_pct / 100)
+                // Only update if we haven't set it yet, or if new stop is lower (better for short)
+                if not breakeven_6h_stop_set or max_stop_price < breakeven_6h_stop_price
+                    breakeven_6h_stop_price := max_stop_price
+                    breakeven_6h_stop_set := true
+                    // Update current_stop to max level (for display/logging)
+                    if max_stop_price < current_stop
+                        current_stop := max_stop_price
+                    // Set stop loss at max level using strategy.exit
+                    strategy.exit("6H Breakeven Stop", stop=max_stop_price, comment="6H Breakeven Stop at Max")
+                // Check if price has hit the stop (current price at or above stop)
+                if close >= breakeven_6h_stop_price
+                    strategy.close("SHORT", comment="6H Breakeven Stop Hit")
+            // Update previous profit for next tick
+            prev_profit_short := current_profit_short
+
+// RSI Exit Overrides
+if rsi_exit_long_condition
+    strategy.close("LONG", comment="RSI Exit Long")
+
+if rsi_exit_short_condition
+    strategy.close("SHORT", comment="RSI Exit Short")
+
+// ============================================
+// V13 ENHANCED HISTORICAL ENHANCER PAYLOAD
+// 100+ data points for ML/pattern discovery
+// ============================================
+
+historical_enhancer_payload(side, strategy_identifier) =>
+    cid = str.tostring(time, "yyyyMMdd-HHmmss")
+    bar_time_iso = str.tostring(time, "yyyy-MM-dd'T'HH:mm:ss")
+    session_name = session_label()
+    weekday_name = weekday_label()
+    direction_label = side == "buy" ? "LONG" : "SHORT"
+    atr_pct_val = close != 0 ? (atr / close) * 100 : na
+    
+    // Calculate HTF values inside function to reduce external elements
+    htf_tenkan_calc = request.security(syminfo.tickerid, "60", (ta.highest(high, 9) + ta.lowest(low, 9)) / 2)
+    htf_kijun_calc = request.security(syminfo.tickerid, "60", (ta.highest(high, 26) + ta.lowest(low, 26)) / 2)
+    htf_senkouA_calc = request.security(syminfo.tickerid, "60", ((ta.highest(high, 9) + ta.lowest(low, 9)) / 2 + (ta.highest(high, 26) + ta.lowest(low, 26)) / 2) / 2)
+    htf_senkouB_calc = request.security(syminfo.tickerid, "60", (ta.highest(high, 52) + ta.lowest(low, 52)) / 2)
+    htf_cloud_top_calc = math.max(htf_senkouA_calc, htf_senkouB_calc)
+    htf_cloud_bottom_calc = math.min(htf_senkouA_calc, htf_senkouB_calc)
+    htf_cloud_bullish_calc = htf_senkouA_calc > htf_senkouB_calc
+    htf_rsi_calc = request.security(syminfo.tickerid, "60", ta.rsi(close, 14))
+    
+    // Calculate daily reference data inside function
+    prev_day_high_calc = request.security(syminfo.tickerid, "D", high[1])
+    prev_day_low_calc = request.security(syminfo.tickerid, "D", low[1])
+    prev_day_close_calc = request.security(syminfo.tickerid, "D", close[1])
+    
+    // Calculate percentages inside function
+    price_vs_htf_kijun_pct_val = close != 0 ? ((close - htf_kijun_calc) / close) * 100 : na
+    price_vs_htf_cloud_top_pct_val = close != 0 ? ((close - htf_cloud_top_calc) / close) * 100 : na
+    price_vs_htf_cloud_bottom_pct_val = close != 0 ? ((close - htf_cloud_bottom_calc) / close) * 100 : na
+    price_vs_prev_high_pct_calc = prev_day_high_calc != 0 ? (close - prev_day_high_calc) / prev_day_high_calc * 100 : na
+    price_vs_prev_low_pct_calc = prev_day_low_calc != 0 ? (close - prev_day_low_calc) / prev_day_low_calc * 100 : na
+    price_vs_prev_close_pct_calc = prev_day_close_calc != 0 ? (close - prev_day_close_calc) / prev_day_close_calc * 100 : na
+
+    enhancer = ""
+    
+    // === CORE IDENTIFIERS ===
+    enhancer += '"entry_direction":' + string_to_json(direction_label) + ","
+    enhancer += '"session":' + string_to_json(session_name) + ","
+    enhancer += '"day_of_week":' + string_to_json(weekday_name) + ","
+    enhancer += '"bar_index":' + str.tostring(bar_index) + ","
+    enhancer += '"entry_hour":' + str.tostring(la_hour) + ","
+    
+    // === ICHIMOKU CORE ===
+    enhancer += '"tenkan":' + number_or_null(tenkan, "#.#####") + ","
+    enhancer += '"kijun":' + number_or_null(kijun, "#.#####") + ","
+    enhancer += '"senkou_a":' + number_or_null(senkouA, "#.#####") + ","
+    enhancer += '"senkou_b":' + number_or_null(senkouB, "#.#####") + ","
+    enhancer += '"cloud_top":' + number_or_null(cloud_top, "#.#####") + ","
+    enhancer += '"cloud_bottom":' + number_or_null(cloud_bottom, "#.#####") + ","
+    enhancer += '"cloud_bullish":' + bool_to_json(cloud_bullish) + ","
+    enhancer += '"price_above_cloud":' + bool_to_json(price_above_cloud) + ","
+    enhancer += '"price_below_cloud":' + bool_to_json(price_below_cloud) + ","
+    enhancer += '"tk_cross_long":' + bool_to_json(tk_cross_up) + ","
+    enhancer += '"tk_cross_short":' + bool_to_json(tk_cross_down) + ","
+    enhancer += '"chikou_bullish":' + bool_to_json(chikou_bullish) + ","
+    enhancer += '"chikou_bearish":' + bool_to_json(chikou_bearish) + ","
+    
+    // === ICHIMOKU STRENGTH (V14 NEW) ===
+    enhancer += '"tk_separation_pct":' + percent_or_null(tk_separation_pct) + ","
+    enhancer += '"cloud_thickness_pct":' + percent_or_null(cloud_thickness_pct) + ","
+    enhancer += '"cloud_momentum":' + percent_or_null(cloud_momentum) + ","
+    enhancer += '"price_vs_tenkan_pct":' + percent_or_null(price_vs_tenkan_pct) + ","
+    enhancer += '"price_vs_kijun_pct":' + percent_or_null(price_vs_kijun_pct) + ","
+    enhancer += '"price_distance_from_cloud_pct":' + percent_or_null(price_distance_from_cloud_pct) + ","
+    enhancer += '"chikou_distance_pct":' + percent_or_null(chikou_distance_pct) + ","
+    
+    // === QUICK EXIT PREDICTION INDICATORS (V14 NEW) ===
+    enhancer += '"bars_since_tk_cross":' + str.tostring(bars_since_tk_cross) + ","
+    enhancer += '"tk_cross_strength_pct":' + percent_or_null(tk_cross_strength_pct) + ","
+    enhancer += '"cloud_entry_angle":' + number_or_null(cloud_entry_angle, "#.####") + ","
+    enhancer += '"tk_cross_count_20":' + str.tostring(tk_cross_count_20) + ","
+    enhancer += '"tenkan_slope_pct":' + percent_or_null(tenkan_slope_pct) + ","
+    enhancer += '"kijun_slope_pct":' + percent_or_null(kijun_slope_pct) + ","
+    enhancer += '"tk_convergence":' + str.tostring(tk_convergence) + ","
+    enhancer += '"price_position_in_range":' + percent_or_null(price_position_in_range) + ","
+    enhancer += '"future_cloud_bullish":' + bool_to_json(future_cloud_bullish) + ","
+    enhancer += '"future_cloud_bearish":' + bool_to_json(future_cloud_bearish) + ","
+    enhancer += '"bars_since_senkou_cross":' + str.tostring(bars_since_senkou_cross) + ","
+    enhancer += '"price_vs_cloud_center_pct":' + percent_or_null(price_vs_cloud_center_pct) + ","
+    enhancer += '"ichimoku_bullish_score":' + str.tostring(ichimoku_bullish_score) + ","
+    enhancer += '"ichimoku_bearish_score":' + str.tostring(ichimoku_bearish_score) + ","
+    enhancer += '"signal_quality_long":' + str.tostring(signal_quality_long) + ","
+    enhancer += '"signal_quality_short":' + str.tostring(signal_quality_short) + ","
+    
+    // === ADX/DMI INDICATORS ===
+    enhancer += '"adx":' + number_or_null(adx, "#.####") + ","
+    enhancer += '"+di":' + number_or_null(diPlus, "#.####") + ","
+    enhancer += '"-di":' + number_or_null(diMinus, "#.####") + ","
+    enhancer += '"di_spread":' + number_or_null(di_spread, "#.####") + ","
+    enhancer += '"adx_change_1bar":' + number_or_null(adx_change_1bar, "#.####") + ","
+    enhancer += '"adx_change_3bar":' + number_or_null(adx_change_3bar, "#.####") + ","
+    enhancer += '"adx_acceleration":' + number_or_null(adx_acceleration, "#.####") + ","
+    enhancer += '"di_spread_change":' + number_or_null(di_spread_change, "#.####") + ","
+    
+    // === RSI INDICATORS ===
+    enhancer += '"rsi":' + number_or_null(rsi, "#.####") + ","
+    enhancer += '"rsi_slope":' + number_or_null(rsi_slope, "#.####") + ","
+    enhancer += '"rsi_slope_3bar":' + number_or_null(rsi_slope_3bar, "#.####") + ","
+    enhancer += '"rsi_acceleration":' + number_or_null(rsi_acceleration, "#.####") + ","
+    enhancer += '"rsi_distance_from_50":' + number_or_null(rsi_distance_from_50, "#.####") + ","
+    
+    // === VWAP INDICATORS (STRONGEST PREDICTOR +0.772) ===
+    enhancer += '"vwap_value":' + number_or_null(vwap_current, "#.####") + ","
+    enhancer += '"vwap_distance_pct":' + percent_or_null(vwap_distance_pct) + ","
+    enhancer += '"vwap_momentum":' + percent_or_null(vwap_momentum) + ","
+    enhancer += '"price_vs_vwap_direction":' + str.tostring(price_vs_vwap_direction) + ","
+    
+    // === VOLUME INDICATORS (Multiple timeframes) ===
+    enhancer += '"volume":' + number_or_null(volume, "#.####") + ","
+    enhancer += '"volume_sma_20":' + number_or_null(vol_sma, "#.####") + ","
+    enhancer += '"volume_ratio_5":' + percent_or_null(volume_ratio_5) + ","
+    enhancer += '"volume_ratio_10":' + percent_or_null(volume_ratio_10) + ","
+    enhancer += '"volume_ratio_20":' + percent_or_null(volume_ratio_20) + ","
+    enhancer += '"volume_acceleration":' + percent_or_null(volume_acceleration) + ","
+    enhancer += '"volume_delta":' + number_or_null(volume_delta, "#.####") + ","
+    enhancer += '"volume_zscore":' + number_or_null(volume_zscore, "#.####") + ","
+    
+    // === MOMENTUM INDICATORS (Multiple timeframes) ===
+    enhancer += '"momentum_1bar":' + percent_or_null(momentum_1bar) + ","
+    enhancer += '"momentum_3bar":' + percent_or_null(momentum_3bar) + ","
+    enhancer += '"momentum_5bar":' + percent_or_null(momentum_5bar) + ","
+    enhancer += '"momentum_10bar":' + percent_or_null(momentum_10bar) + ","
+    
+    // === EMA TREND INDICATORS ===
+    enhancer += '"ema_8":' + number_or_null(ema_8, "#.#####") + ","
+    enhancer += '"ema_21":' + number_or_null(ema_21, "#.#####") + ","
+    enhancer += '"ema_50":' + number_or_null(ema_50, "#.#####") + ","
+    enhancer += '"ema_trend_8_21":' + str.tostring(ema_trend_8_21) + ","
+    enhancer += '"ema_trend_21_50":' + str.tostring(ema_trend_21_50) + ","
+    enhancer += '"price_vs_ema8_pct":' + percent_or_null(price_vs_ema8_pct) + ","
+    enhancer += '"price_vs_ema21_pct":' + percent_or_null(price_vs_ema21_pct) + ","
+    enhancer += '"price_vs_ema50_pct":' + percent_or_null(price_vs_ema50_pct) + ","
+    
+    // Long-term EMAs (2, 20, 55 day - for trend alignment)
+    enhancer += '"ema_2":' + number_or_null(ema_2, "#.#####") + ","
+    enhancer += '"ema_20":' + number_or_null(ema_20, "#.#####") + ","
+    enhancer += '"ema_55":' + number_or_null(ema_55, "#.#####") + ","
+    enhancer += '"ema_trend_2_20":' + str.tostring(ema_trend_2_20) + ","
+    enhancer += '"ema_trend_20_55":' + str.tostring(ema_trend_20_55) + ","
+    enhancer += '"ema_trend_55_20":' + str.tostring(ema_trend_55_20) + ","
+    enhancer += '"price_vs_ema2_pct":' + percent_or_null(price_vs_ema2_pct) + ","
+    enhancer += '"price_vs_ema20_pct":' + percent_or_null(price_vs_ema20_pct) + ","
+    enhancer += '"price_vs_ema55_pct":' + percent_or_null(price_vs_ema55_pct) + ","
+    
+    // === CANDLE STRUCTURE (Reversal detection) ===
+    enhancer += '"candle_body_pct":' + percent_or_null(candle_body_pct) + ","
+    enhancer += '"candle_body_to_range":' + percent_or_null(candle_body_to_range) + ","
+    enhancer += '"candle_strength":' + percent_or_null(candle_strength) + ","
+    enhancer += '"upper_wick_pct":' + percent_or_null(upper_wick_pct) + ","
+    enhancer += '"lower_wick_pct":' + percent_or_null(lower_wick_pct) + ","
+    enhancer += '"wick_balance":' + number_or_null(wick_balance, "#.####") + ","
+    enhancer += '"range_pct":' + percent_or_null(range_pct) + ","
+    enhancer += '"range_vs_atr":' + number_or_null(range_vs_atr, "#.####") + ","
+    
+    // === VOLATILITY INDICATORS ===
+    enhancer += '"atr":' + number_or_null(atr, "#.####") + ","
+    enhancer += '"atr_pct":' + percent_or_null(atr_pct_val) + ","
+    enhancer += '"atr_pct_change":' + percent_or_null(atr_pct_change) + ","
+    enhancer += '"volatility_20":' + number_or_null(volatility_20, "#.####") + ","
+    enhancer += '"atr_to_volatility_ratio":' + number_or_null(atr_to_volatility_ratio, "#.####") + ","
+    
+    // === BOLLINGER BANDS ===
+    enhancer += '"bollinger_width":' + number_or_null(bollinger_width, "#.####") + ","
+    enhancer += '"bollinger_position":' + number_or_null(bollinger_position, "#.####") + ","
+    enhancer += '"bollinger_squeeze":' + bool_to_json(bollinger_squeeze) + ","
+    
+    // === MACD INDICATORS ===
+    enhancer += '"macd_line":' + number_or_null(macd_line_v12, "#.####") + ","
+    enhancer += '"macd_signal":' + number_or_null(macd_signal, "#.####") + ","
+    enhancer += '"macd_hist":' + number_or_null(macd_hist, "#.####") + ","
+    enhancer += '"macd_hist_change":' + number_or_null(macd_hist_change, "#.####") + ","
+    enhancer += '"macd_hist_acceleration":' + number_or_null(macd_hist_acceleration, "#.####") + ","
+    
+    // === STOCHASTIC INDICATORS ===
+    enhancer += '"stoch_k":' + number_or_null(stoch_k, "#.####") + ","
+    enhancer += '"stoch_d":' + number_or_null(stoch_d, "#.####") + ","
+    enhancer += '"stoch_crossover":' + bool_to_json(stoch_crossover) + ","
+    enhancer += '"stoch_crossunder":' + bool_to_json(stoch_crossunder) + ","
+    
+    // === COMPOSITE SCORES ===
+    enhancer += '"trend_strength_score":' + number_or_null(trend_strength_score, "#.####") + ","
+    enhancer += '"mtf_alignment_score":' + str.tostring(mtf_alignment_score) + ","
+    enhancer += '"mtf_bearish_score":' + str.tostring(mtf_bearish_score) + ","
+    
+    // === HIGHER TIMEFRAME (1H) ===
+    enhancer += '"htf_tenkan":' + number_or_null(htf_tenkan_calc, "#.#####") + ","
+    enhancer += '"htf_kijun":' + number_or_null(htf_kijun_calc, "#.#####") + ","
+    enhancer += '"htf_senkou_a":' + number_or_null(htf_senkouA_calc, "#.#####") + ","
+    enhancer += '"htf_senkou_b":' + number_or_null(htf_senkouB_calc, "#.#####") + ","
+    enhancer += '"htf_cloud_bullish":' + bool_to_json(htf_cloud_bullish_calc) + ","
+    enhancer += '"htf_rsi":' + number_or_null(htf_rsi_calc, "#.####") + ","
+    enhancer += '"price_vs_htf_kijun_pct":' + percent_or_null(price_vs_htf_kijun_pct_val) + ","
+    enhancer += '"price_vs_htf_cloud_top_pct":' + percent_or_null(price_vs_htf_cloud_top_pct_val) + ","
+    enhancer += '"price_vs_htf_cloud_bottom_pct":' + percent_or_null(price_vs_htf_cloud_bottom_pct_val) + ","
+    
+    // === DAILY REFERENCE DATA ===
+    enhancer += '"prev_day_high":' + number_or_null(prev_day_high_calc, "#.#####") + ","
+    enhancer += '"prev_day_low":' + number_or_null(prev_day_low_calc, "#.#####") + ","
+    enhancer += '"prev_day_close":' + number_or_null(prev_day_close_calc, "#.#####") + ","
+    enhancer += '"price_vs_prev_high_pct":' + percent_or_null(price_vs_prev_high_pct_calc) + ","
+    enhancer += '"price_vs_prev_low_pct":' + percent_or_null(price_vs_prev_low_pct_calc) + ","
+    enhancer += '"price_vs_prev_close_pct":' + percent_or_null(price_vs_prev_close_pct_calc)
+    
+    enhancer := remove_trailing_comma(enhancer)
+
+    payload = '{"strategy_id":"' + strategy_identifier + '","side":"' + side + '","price":' + number_or_null(close, "#.####") + ','
+    payload += '"cid":"' + cid + '","bar_time":"' + bar_time_iso + '",'
+    payload += '"symbol":' + string_to_json(syminfo.ticker) + ','
+    payload += '"timeframe":' + string_to_json(timeframe.period) + ','
+    payload += '"historical_enhancer":{' + enhancer + '}}'
+    payload
+
+// ============================================
+// ENTRIES & EXITS (SAME AS V12)
+// ============================================
+
+if long_condition
+    payload_long = historical_enhancer_payload("buy", strategy_id_for_alerts)
+    strategy.entry("LONG", strategy.long)
+    alert(payload_long, alert.freq_once_per_bar)
+
+if short_condition
+    payload_short = historical_enhancer_payload("sell", strategy_id_for_alerts)
+    strategy.entry("SHORT", strategy.short)
+    alert(payload_short, alert.freq_once_per_bar)
+
+if strategy.position_size > 0 and not na(current_stop)
+    target = entry_price * (1 + take_profit_pct / 100)
+    strategy.exit("EXIT", "LONG", stop=current_stop, limit=target)
+
+if strategy.position_size < 0 and not na(current_stop)
+    target = entry_price * (1 - take_profit_pct / 100)
+    strategy.exit("EXIT", "SHORT", stop=current_stop, limit=target)
+
+// Calculate HTF values for exit (outside conditional to avoid request.security() error)
+exit_htf_kijun_calc = request.security(syminfo.tickerid, "60", (ta.highest(high, 26) + ta.lowest(low, 26)) / 2)
+exit_htf_senkouA_calc = request.security(syminfo.tickerid, "60", ((ta.highest(high, 9) + ta.lowest(low, 9)) / 2 + (ta.highest(high, 26) + ta.lowest(low, 26)) / 2) / 2)
+exit_htf_senkouB_calc = request.security(syminfo.tickerid, "60", (ta.highest(high, 52) + ta.lowest(low, 52)) / 2)
+exit_htf_cloud_bullish_calc = exit_htf_senkouA_calc > exit_htf_senkouB_calc
+exit_htf_rsi_calc = request.security(syminfo.tickerid, "60", ta.rsi(close, 14))
+
+// Alert when position closes (from any position to flat) - V13 ENHANCED EXIT PAYLOAD
+exit_cid = str.tostring(time, "yyyyMMdd-HHmmss")
+if strategy.position_size == 0 and strategy.position_size[1] != 0
+    exit_direction = strategy.position_size[1] > 0 ? "LONG_EXIT" : "SHORT_EXIT"
+    exit_atr_pct = close != 0 ? (atr / close) * 100 : na
+    exit_price_vs_htf_kijun = close != 0 ? ((close - exit_htf_kijun_calc) / close) * 100 : na
+    
+    exit_payload = '{"strategy_id":"' + strategy_id_for_alerts + '","side":"exit","price":' + number_or_null(close, "#.####") + ','
+    exit_payload += '"cid":"' + exit_cid + '","bar_time":"' + str.tostring(time, "yyyy-MM-dd\'T\'HH:mm:ss") + '",'
+    exit_payload += '"symbol":' + string_to_json(syminfo.ticker) + ','
+    exit_payload += '"timeframe":' + string_to_json(timeframe.period)
+    
+    // V13 ENHANCED EXIT DATA
+    exit_payload += ',"historical_enhancer":{'
+    exit_payload += '"exit_direction":' + string_to_json(exit_direction) + ','
+    exit_payload += '"session":' + string_to_json(session_label()) + ','
+    exit_payload += '"day_of_week":' + string_to_json(weekday_label()) + ','
+    exit_payload += '"exit_hour":' + str.tostring(la_hour) + ','
+    
+    // Ichimoku state at exit
+    exit_payload += '"tenkan":' + number_or_null(tenkan, "#.#####") + ','
+    exit_payload += '"kijun":' + number_or_null(kijun, "#.#####") + ','
+    exit_payload += '"cloud_bullish":' + bool_to_json(cloud_bullish) + ','
+    exit_payload += '"price_above_cloud":' + bool_to_json(price_above_cloud) + ','
+    exit_payload += '"price_below_cloud":' + bool_to_json(price_below_cloud) + ','
+    exit_payload += '"tk_separation_pct":' + percent_or_null(tk_separation_pct) + ','
+    exit_payload += '"cloud_thickness_pct":' + percent_or_null(cloud_thickness_pct) + ','
+    
+    // Quick Exit Indicators at exit
+    exit_payload += '"bars_since_tk_cross":' + str.tostring(bars_since_tk_cross) + ','
+    exit_payload += '"tk_cross_count_20":' + str.tostring(tk_cross_count_20) + ','
+    exit_payload += '"tk_convergence":' + str.tostring(tk_convergence) + ','
+    exit_payload += '"tenkan_slope_pct":' + percent_or_null(tenkan_slope_pct) + ','
+    exit_payload += '"kijun_slope_pct":' + percent_or_null(kijun_slope_pct) + ','
+    exit_payload += '"ichimoku_bullish_score":' + str.tostring(ichimoku_bullish_score) + ','
+    exit_payload += '"ichimoku_bearish_score":' + str.tostring(ichimoku_bearish_score) + ','
+    exit_payload += '"signal_quality_long":' + str.tostring(signal_quality_long) + ','
+    exit_payload += '"signal_quality_short":' + str.tostring(signal_quality_short) + ','
+    
+    // ADX/DMI at exit
+    exit_payload += '"adx":' + number_or_null(adx, "#.####") + ','
+    exit_payload += '"di_spread":' + number_or_null(di_spread, "#.####") + ','
+    exit_payload += '"adx_change_3bar":' + number_or_null(adx_change_3bar, "#.####") + ','
+    
+    // RSI at exit
+    exit_payload += '"rsi":' + number_or_null(rsi, "#.####") + ','
+    exit_payload += '"rsi_slope":' + number_or_null(rsi_slope, "#.####") + ','
+    
+    // VWAP at exit
+    exit_payload += '"vwap_value":' + number_or_null(vwap_current, "#.####") + ','
+    exit_payload += '"vwap_distance_pct":' + percent_or_null(vwap_distance_pct) + ','
+    
+    // Volume at exit
+    exit_payload += '"volume_ratio_5":' + percent_or_null(volume_ratio_5) + ','
+    exit_payload += '"volume_ratio_20":' + percent_or_null(volume_ratio_20) + ','
+    
+    // Momentum at exit
+    exit_payload += '"momentum_1bar":' + percent_or_null(momentum_1bar) + ','
+    exit_payload += '"momentum_3bar":' + percent_or_null(momentum_3bar) + ','
+    exit_payload += '"momentum_5bar":' + percent_or_null(momentum_5bar) + ','
+    
+    // EMA trend at exit (short-term)
+    exit_payload += '"ema_trend_8_21":' + str.tostring(ema_trend_8_21) + ','
+    exit_payload += '"price_vs_ema8_pct":' + percent_or_null(price_vs_ema8_pct) + ','
+    
+    // Long-term EMAs at exit (2, 20, 55 day)
+    exit_payload += '"ema_2":' + number_or_null(ema_2, "#.#####") + ','
+    exit_payload += '"ema_20":' + number_or_null(ema_20, "#.#####") + ','
+    exit_payload += '"ema_55":' + number_or_null(ema_55, "#.#####") + ','
+    exit_payload += '"ema_trend_2_20":' + str.tostring(ema_trend_2_20) + ','
+    exit_payload += '"ema_trend_20_55":' + str.tostring(ema_trend_20_55) + ','
+    exit_payload += '"ema_trend_55_20":' + str.tostring(ema_trend_55_20) + ','
+    exit_payload += '"price_vs_ema2_pct":' + percent_or_null(price_vs_ema2_pct) + ','
+    exit_payload += '"price_vs_ema20_pct":' + percent_or_null(price_vs_ema20_pct) + ','
+    exit_payload += '"price_vs_ema55_pct":' + percent_or_null(price_vs_ema55_pct) + ','
+    
+    // Candle at exit
+    exit_payload += '"candle_body_pct":' + percent_or_null(candle_body_pct) + ','
+    exit_payload += '"candle_strength":' + percent_or_null(candle_strength) + ','
+    
+    // Volatility at exit
+    exit_payload += '"atr":' + number_or_null(atr, "#.####") + ','
+    exit_payload += '"atr_pct":' + percent_or_null(exit_atr_pct) + ','
+    exit_payload += '"bollinger_position":' + number_or_null(bollinger_position, "#.####") + ','
+    
+    // MACD at exit
+    exit_payload += '"macd_hist":' + number_or_null(macd_hist, "#.####") + ','
+    exit_payload += '"macd_hist_change":' + number_or_null(macd_hist_change, "#.####") + ','
+    
+    // Stochastic at exit
+    exit_payload += '"stoch_k":' + number_or_null(stoch_k, "#.####") + ','
+    exit_payload += '"stoch_d":' + number_or_null(stoch_d, "#.####") + ','
+    
+    // Composite scores at exit
+    exit_payload += '"trend_strength_score":' + number_or_null(trend_strength_score, "#.####") + ','
+    exit_payload += '"mtf_alignment_score":' + str.tostring(mtf_alignment_score) + ','
+    
+    // HTF at exit (calculated outside conditional)
+    exit_payload += '"htf_cloud_bullish":' + bool_to_json(exit_htf_cloud_bullish_calc) + ','
+    exit_payload += '"htf_rsi":' + number_or_null(exit_htf_rsi_calc, "#.####") + ','
+    exit_payload += '"price_vs_htf_kijun_pct":' + percent_or_null(exit_price_vs_htf_kijun)
+    
+    exit_payload += '}}'
+    alert(exit_payload, alert.freq_once_per_bar)
+
+// ============================================
+// PLOTTING (SAME AS V12)
+// ============================================
+
+// Ichimoku
+plot(tenkan, color=color.new(color.red, 0), linewidth=1, title="Tenkan")
+plot(kijun, color=color.new(color.blue, 0), linewidth=1, title="Kijun")
+plot(chikou, color=color.new(color.teal, 0), linewidth=1, title="Chikou", offset=-displacement)
+
+p1 = plot(senkouA, color=color.new(color.green, 0), linewidth=1, title="Senkou A", offset=displacement)
+p2 = plot(senkouB, color=color.new(color.red, 0), linewidth=1, title="Senkou B", offset=displacement)
+fill(p1, p2, color=cloud_bullish ? color.new(color.green, 90) : color.new(color.red, 90), title="Cloud")
+
+// VWAP (optional reference line)
+plot(vwap_price, color=color.new(color.purple, 80), title="VWAP", linewidth=1)
+
+// Entry signals (Ichimoku only)
+plotshape(long_condition, title="Ichimoku Long", location=location.belowbar, color=color.green, style=shape.circle, size=size.small, text="ICH")
+plotshape(short_condition, title="Ichimoku Short", location=location.abovebar, color=color.red, style=shape.circle, size=size.small, text="ICH")
+
+// Stop
+plot(strategy.position_size != 0 ? current_stop : na, color=color.red, linewidth=2, style=plot.style_linebr, title="Stop")
+
+// Breakeven marker
+plotshape(breakeven_set and breakeven_set[1] == false and strategy.position_size > 0, title="BE Long", location=location.belowbar, color=color.yellow, style=shape.circle, size=size.tiny)
+plotshape(breakeven_set and breakeven_set[1] == false and strategy.position_size < 0, title="BE Short", location=location.abovebar, color=color.yellow, style=shape.circle, size=size.tiny)
+
+bgcolor(price_above_cloud and cloud_bullish ? color.new(color.green, 97) : price_below_cloud and cloud_bearish ? color.new(color.red, 97) : na)
+
+// ============================================
+// INFO PANEL (V14 ENHANCED - IMPROVED VISIBILITY)
+// ============================================
+
+if barstate.islast and use_preset_values
+    // Use dark background with high opacity for better visibility on all chart themes
+    var table info_table = table.new(position.top_right, 2, 12, bgcolor=color.new(color.black, 10), border_width=2, border_color=color.new(color.white, 50), frame_color=color.new(color.white, 30), frame_width=1)
+    
+    // Header row with bright yellow/orange background for high visibility
+    table.cell(info_table, 0, 0, "€£$¥ Ichimoku v14", text_color=color.white, text_size=size.normal, bgcolor=color.new(color.orange, 20), text_halign=text.align_left)
+    table.cell(info_table, 1, 0, preset, text_color=color.white, text_size=size.small, bgcolor=color.new(color.orange, 20), text_halign=text.align_left)
+    
+    // Light text colors for all cells - white for labels, light gray for values
+    ichimoku_line = "Ichimoku: T" + str.tostring(conversionPeriods, "#") + " K" + str.tostring(basePeriods, "#") + " SB" + str.tostring(laggingSpan2Periods, "#") + " D" + str.tostring(displacement, "#")
+    table.cell(info_table, 0, 1, "Ichimoku", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 1, 1, ichimoku_line, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
+    
+    adx_line = "ADX: L" + str.tostring(adx_length, "#") + " T" + str.tostring(adx_threshold, "#.##") + (use_adx_acceleration ? " | Accel " + str.tostring(adx_acceleration_threshold, "#") + "+" : "")
+    table.cell(info_table, 0, 2, "ADX", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 1, 2, adx_line, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
+    
+    rsi_line = "RSI: L" + str.tostring(rsi_length, "#") + " OB" + str.tostring(rsi_overbought, "#.##") + " OS" + str.tostring(rsi_oversold, "#.##")
+    table.cell(info_table, 0, 3, "RSI", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 1, 3, rsi_line, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
+    
+    rsi_exit_line = "RSI Exit: " + (use_rsi_exit ? "ON" : "OFF") + " | Long < " + str.tostring(rsi_exit_long, "#.##") + " | Short > " + str.tostring(rsi_exit_short, "#.##") + " | Activate ≥ " + str.tostring(rsi_exit_activation_pct, "#.##") + "%"
+    table.cell(info_table, 0, 4, "RSI Exit", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 1, 4, rsi_exit_line, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
+    
+    stop_line = "Stop: " + stop_mode + " | SL " + str.tostring(stop_loss_pct, "#.##") + "% | TP " + str.tostring(take_profit_pct, "#.##") + "%"
+    if stop_mode == "ATR-Based"
+        stop_line := stop_line + " | ATR L" + str.tostring(atr_length, "#") + " M" + str.tostring(atr_mult, "#.##")
+    table.cell(info_table, 0, 5, "Risk Mgmt", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 1, 5, stop_line, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
+    
+    be_line = "BE: " + (use_breakeven ? "ON" : "OFF") + " | Trigger " + str.tostring(breakeven_trigger, "#.##") + "% | Lock " + str.tostring(breakeven_level, "#.##") + "%"
+    table.cell(info_table, 0, 6, "Breakeven", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 1, 6, be_line, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
+    
+    be_3h_line = "3H BE: " + (use_3hour_breakeven ? "ON" : "OFF") + " | Trigger ≥" + str.tostring(breakeven_3h_min_profit, "#.#") + "% | Range " + str.tostring(breakeven_3h_min_pct, "#.##") + "%-" + str.tostring(breakeven_3h_max_pct, "#.##") + "%"
+    table.cell(info_table, 0, 7, "3H Breakeven", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 1, 7, be_3h_line, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
+    
+    be_6h_line = "6H BE: " + (use_6hour_breakeven ? "ON" : "OFF") + " | Range " + str.tostring(breakeven_6h_min_pct, "#.#") + "%-" + str.tostring(breakeven_6h_max_pct, "#.#") + "%"
+    table.cell(info_table, 0, 8, "6H Breakeven", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 1, 8, be_6h_line, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
+    
+    trail_line = "Trail: " + (use_trailing ? "ON" : "OFF") + " | Trigger " + str.tostring(trailing_trigger, "#.##") + "% | Distance " + str.tostring(trailing_dist, "#.##") + "%"
+    table.cell(info_table, 0, 9, "Trailing", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 1, 9, trail_line, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
+    
+    // Count active time filters
+    active_time_filters = (use_news_filter ? 1 : 0) + (use_weekend_entry_block_3 ? 1 : 0) + (use_evening_entry_block ? 1 : 0)
+    time_status = active_time_filters > 0 ? str.tostring(active_time_filters) + " ACTIVE" : "OFF"
+    table.cell(info_table, 0, 10, "Time Filters", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 1, 10, time_status, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
+    
+    // ADX Acceleration Status
+    adx_accel_status = use_adx_acceleration ? "ON" : "OFF"
+    table.cell(info_table, 0, 11, "ADX Acceleration", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 1, 11, adx_accel_status, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
