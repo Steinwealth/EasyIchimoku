@@ -1,8 +1,8 @@
 # Easy Ichimoku v14
 
-**€£$¥ Ichimoku v14** — Production-style TradingView Pine Script (v5) for Ichimoku Cloud trend-following with preset-optimized parameters, multi-layer filters, and webhook-ready alerts. Use with your own broker or execution agent; no internal URLs or secrets in this repo.
+**€£$¥ Ichimoku v14** — Production-style TradingView Pine Script (v5) for Ichimoku Cloud trend-following with preset-optimized parameters, multi-layer filters, and webhook-ready alerts. Use with your own broker and the Easy TradingView Agent to process TradingView alerts into executed decisions for your crypto broker.
 
-> **Positioning:** Part of the "Easy Trading Software" suite. Validation is based on a structured historical backtest snapshot plus an ongoing live forward test in TradingView Strategy Tester; the forward test continues through the year to study regime robustness, consistency, and capital efficiency. A 6-month historical backtest pack is in progress and will be published to /docs (exported Strategy Tester tables + settings). Designed for reliability and automation: preset defaults per symbol/timeframe, time filters, breakeven and trailing logic, and rich JSON alert payloads for downstream execution and analytics.
+> **Positioning:** Part of the "Easy Trading Software" suite. Validation is based on a structured historical backtest snapshot plus an ongoing live forward test in TradingView Strategy Tester; the forward test continues through the year to study regime robustness, consistency, and capital efficiency. Designed for reliability and automation: preset defaults per symbol/timeframe, time filters, breakeven and trailing logic, and rich JSON alert payloads for downstream execution and analytics. 1H Presets for Coinbase Perp Nano Futures BTC, ETH, SOL, & XRP are included.
 
 ---
 
@@ -35,7 +35,7 @@
 Settings used for the evidence tables in this README:
 
 - **Venue:** Coinbase USA nano futures
-- **Timeframes tested:** 5m (and 1h where applicable)
+- **Timeframes tested:** 5m and 1h
 - **Commission:** 0.04%
 - **Position size:** 80%
 - **Execution:** `calc_on_every_tick=true` (exits evaluated intrabar)
@@ -146,7 +146,7 @@ Leave **Use Preset Defaults** on for one-click optimized values, or turn it off 
 
 - **Position risk:** ATR-based or fixed % stop; take-profit; breakeven and trailing to lock gains.
 - **Time-based:** Weekend and evening entry blocks; news filter to avoid open chaos (in our tests, this improved outcomes; exact lift varies by symbol/regime).
-- **Hold-time exits:** 6H (and optional 3H) breakeven close when profit is in a small band after 6+ hours, to avoid giving back gains on stale trades.
+- **Hold-time exits:** 6H breakeven close when profit is in a small band after 6+ hours, to avoid giving back gains on stale trades.
 - **RSI exit:** Optional early exit when momentum fades (activation % and long/short thresholds).
 
 Exits are evaluated on every tick when using default settings, so behavior matches execution agents that monitor frequently.
