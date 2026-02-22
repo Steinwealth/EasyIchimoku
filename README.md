@@ -22,7 +22,7 @@
 | Goal | Where to go |
 |------|-------------|
 | **Load and run** | [Quick start](#quick-start) |
-| **See proof** | [Historical backtest snapshot](#historical-backtest-snapshot-short-term-optimization-window) · [Evidence (forward test)](#evidence-forward-test-results--live) |
+| **See proof** | [Evidence (forward test)](#evidence-forward-test-results--live) |
 | **Understand the strategy** | [What is Ichimoku?](#what-is-ichimoku) · [What’s in v14](#whats-in-v14) |
 | **Presets and features** | [Presets](#presets) · [Main features](#main-features-v14) |
 | **Risk and filters** | [Risk and guardrails](#risk-and-guardrails) |
@@ -43,26 +43,9 @@ Settings used for the evidence tables in this README:
 - **Position size:** 80%
 - **Execution:** `calc_on_every_tick=true` (exits evaluated intrabar)
 
-Results differ on bar close vs every tick, and by symbol liquidity/spread. Historical backtest snapshot and forward test use the same settings unless noted above.
+Results differ on bar close vs every tick, and by symbol liquidity/spread. Forward test uses the same settings unless noted above.
 
 ---
-
-## Historical Backtest Snapshot (Short-Term Optimization Window)
-
-This snapshot reflects a discrete 41-day optimization window and is separate from the ongoing forward test results below.
-
-**Backtest window:** Oct 3 – Nov 13, 2025 (41 days). Coinbase USA nano futures, 5-minute charts, 0.04% commission, 80% position size. 30-day estimate = `(1 + raw_return)^(30/41) − 1`.
-
-Results below are from the 1H preset configurations.
-
-| Preset | Raw return (41 d) | 30-day est. | Max DD | Trades | Win rate | Profit factor |
-|--------|-------------------|-------------|--------|--------|----------|---------------|
-| **BTC PERP (BIP)** | +34.62% | **+23.5%** | 2.05% | 20 | 80.0% | 15.91 |
-| **ETH PERP (ETP)** | +87.43% | **+58.3%** | 4.46% | 51 | 92.2% | 17.62 |
-| **SOL PERP (SLP)** | +103.30% | **+67.9%** | 3.87% | 36 | 72.2% | 7.51 |
-| **XRP PERP (XPP)** | +38.00% | **+26.6%** | 2.22% | 16 | 75.0% | 13.62 |
-
-> Results depend on symbol, timeframe, commission, and execution (e.g. on bar close vs every tick). Past performance does not guarantee future results. **This project is not financial advice.** See [Disclaimer](#disclaimer).
 
 ## Evidence (Forward Test Results — Live)
 
