@@ -1,263 +1,209 @@
 # Easy Ichimoku v14
 
-**€£$¥ Ichimoku v14** — Production-style TradingView Pine Script (v5) for Ichimoku Cloud trend-following with preset-optimized parameters, multi-layer filters, and webhook-ready alerts. Use with your own broker and the Easy TradingView Agent to process TradingView alerts into executed decisions for your crypto broker.
+**€£$¥ Ichimoku v14** — Production-style TradingView Pine Script (v5) implementing a preset-optimized Ichimoku Cloud trend-following system with layered filters, structured exits, and webhook-ready JSON alerts for automated execution.
 
-> **Positioning:** Part of the "Easy Trading Software" suite. Validation is based on structured historical backtests and ongoing live forward tests using the 1H preset configurations. Designed for reliability and automation: preset defaults per symbol/timeframe, time filters, breakeven and trailing logic, and rich JSON alert payloads for downstream execution and analytics. 1H & 5m presets for Coinbase USA Perp Nano Futures BTC, ETH, SOL, & XRP are included. This project demonstrates structured validation methodology (window normalization, compounding analysis, and portfolio blending) combined with production-ready alert architecture for automated execution systems.
+Part of the **Easy Trading Software** suite.
 
----
+This repository demonstrates:
 
-### Why this project stands out
-
-- **Preset-optimized per symbol** — BTC, ETH, SOL, XRP (1h/5m) and other pairs have dedicated presets (Ichimoku periods, ADX, RSI, risk, breakeven, trailing) tuned from backtests; one-click "Use Preset Defaults."
-- **Multi-layer entry and exit logic** — TK cross + cloud + Chikou + cloud color + ADX + RSI; exits via stop/target, breakeven, 6H breakeven, trailing stop, and RSI-based early exit.
-- **Time filters and guardrails** — Weekend block, evening block, news-volatility filter (8–9 AM PT); configurable so you avoid low-quality sessions.
-- **Webhook-ready and analytics-ready** — Alerts emit full JSON (strategy_id, side, price, symbol, timeframe, and 100+ `historical_enhancer` fields) for execution agents and ML/backtest pipelines.
-
-*This is a complete strategy script — not a snippet.*
+- Structured forward validation methodology
+- Window-normalized compounding analysis
+- Portfolio partition modeling
+- Production-ready alert architecture
 
 ---
 
-### New here?
+# Why This Project Stands Out
 
-| Goal | Where to go |
-|------|-------------|
-| **Load and run** | [Quick start](#quick-start) |
-| **See proof** | [Evidence (forward test)](#evidence-forward-test-results--live) |
-| **Understand the strategy** | [What is Ichimoku?](#what-is-ichimoku) · [What’s in v14](#whats-in-v14) |
-| **Presets and features** | [Presets](#presets) · [Main features](#main-features-v14) |
-| **Risk and filters** | [Risk and guardrails](#risk-and-guardrails) |
-| **Alerts and automation** | [Strategy ID and alerts](#strategy-id-and-alerts) · [Example alert payload](#example-alert-payload) |
+- Preset-optimized per symbol (BTC, ETH, SOL, XRP — 1H & 5m)
+- Multi-layer entry validation (TK cross + cloud + Chikou + ADX + RSI)
+- Structured exit stack (ATR stop, TP, breakeven, 6H BE band, trailing, RSI exit)
+- Time guardrails (weekend, evening, 8–9 AM PT volatility filter)
+- 100+ enriched JSON fields for analytics + automation
+- Designed for real webhook → execution agent deployment
 
----
-
-## Reproducibility (Strategy Tester settings used)
-
-Settings used for the evidence tables in this README:
-
-- **Venue:** Coinbase USA nano futures
-- **Timeframes represented in evidence:**
-  - 1H preset configurations (all performance tables in this README)
-- **Additional presets available in script:**
-  - 5m configurations
-- **Commission:** 0.04%
-- **Position size:** 80%
-- **Execution:** `calc_on_every_tick=true` (exits evaluated intrabar)
-
-Results differ on bar close vs every tick, and by symbol liquidity/spread. Forward test uses the same settings unless noted above.
+This is a full production strategy — not a snippet.
 
 ---
 
-## Evidence (Forward Test Results — Live)
+# Reproducibility (Strategy Tester Settings)
 
-Forward test results from TradingView Strategy Tester. These are real-time forward runs (not retrospective curve-fit) and are being continued throughout the year to evaluate regime robustness, consistency, and capital efficiency. Forward test runs are kept live and updated periodically; this repo reports the latest captured window.
+All performance shown uses:
 
-Results below are from the 1H preset configurations running continuously in TradingView Strategy Tester.
+- Venue: Coinbase USA Perp Nano Futures
+- Timeframe: 1H preset configurations
+- Commission: 0.04%
+- Position size: 80%
+- Execution: `calc_on_every_tick=true`
 
-| Preset | Window | Total P&L | Max DD | Trades | Win rate | Profit factor |
+Intrabar evaluation materially impacts exit precision. Results differ under bar-close evaluation.
+
+---
+
+# Evidence — Live Forward Test Results
+
+Forward test windows captured directly from TradingView Strategy Tester.
+
+| Preset | Window | Total P&L | Max DD | Trades | Win Rate | Profit Factor |
 |--------|--------|-----------|--------|--------|----------|---------------|
-| **BTC (BIP)** | Jul 18, 2025 – Feb 22, 2026 | +30.34% | 4.25% | 71 | 67.61% | 2.122 |
-| **ETH (ETP)** | Jul 18, 2025 – Feb 22, 2026 | +100.04% | 4.93% | 70 | 80.00% | 11.402 |
-| **SOL (SLP)** | Aug 15, 2025 – Feb 22, 2026 | +94.89% | 8.64% | 78 | 71.79% | 2.767 |
-| **XRP (XPP)** | Aug 15, 2025 – Feb 22, 2026 | +37.47% | 8.50% | 73 | 76.71% | 2.194 |
-
-### Compounded rate (derived)
-
-To normalize performance across uneven windows, we compute a compounded monthly rate and an annualized CAGR using: **CAGR = (1 + R)^(365/days) − 1**, where R is total return over the window and *days* is the number of calendar days in the window.
-
-Annualized CAGR assumes compounding and continuous deployment; actual realized annual returns will vary by regime and execution conditions.
-
-| Preset | Days | Compounded monthly | Annualized CAGR |
-|--------|------|--------------------|-----------------|
-| **BTC** | 219 | ~3.75% | ~55.5% |
-| **ETH** | 219 | ~10.12% | ~217.6% |
-| **SOL** | 191 | ~11.22% | ~257.9% |
-| **XRP** | 191 | ~5.20% | ~83.7% |
-
-Annualized CAGR is a mathematical normalization of the observed forward window and does not imply the same return rate will persist.
-
-### 4-symbol portfolio (compounded blend)
-
-Using compounded monthly rates derived from forward-tested windows:
-
-- BTC: ~3.75% / month  
-- ETH: ~10.12% / month  
-- SOL: ~11.22% / month  
-- XRP: ~5.20% / month  
-
-Blended compounded monthly rate (assuming capital partitioned per symbol and independent deployment): ~30.3% / month
-
-Execution model: 3 partitions with 1/3 capital allocation per trade; 3× leverage is offset by 1/3 sizing, yielding approximately 1× effective exposure per active position. Blended modeling does not assume leverage amplification.
-
-This normalization framework (window-adjusted compounding + blended portfolio modeling) is used internally to monitor strategy stability and cross-symbol capital efficiency.
-
-#### Compounded projection (illustrative, derived from ~30.3% monthly rate)
-
-| Period | Total Multiple | Total Return |
-|--------|----------------|--------------|
-| 1 month | 1.30× | +30.3% |
-| 6 months | 4.99× | +399% |
-| 12 months | 24.9× | +2,390% |
-
-Example (starting capital $4,000):
-
-- 1 month → ~$5,211  
-- 6 months → ~$19,960  
-- 12 months → ~$99,600  
-
-These figures are mathematical projections assuming the blended compounded monthly rate persists and capital remains continuously deployed. Real-world results will vary due to volatility regimes, correlation, execution timing, funding, fees, and slippage.
+| BTC (BIP) | Jul 18 2025 – Feb 22 2026 | +30.34% | 4.25% | 71 | 67.61% | 2.122 |
+| ETH (ETP) | Jul 18 2025 – Feb 22 2026 | +100.04% | 4.93% | 70 | 80.00% | 11.402 |
+| SOL (SLP) | Aug 15 2025 – Feb 22 2026 | +94.89% | 8.64% | 78 | 71.79% | 2.767 |
+| XRP (XPP) | Aug 15 2025 – Feb 22 2026 | +37.47% | 8.50% | 73 | 76.71% | 2.194 |
 
 ---
 
+# Forward Test Screenshots
 
-## What’s included
+All screenshots are unedited Strategy Tester exports using the settings listed above.
 
-- **`easy_ichimoku_v14.pine`** — Full v14 strategy: Ichimoku (Tenkan/Kijun/Senkou/Chikou), ADX/RSI filters, breakeven (standard + 3H/6H), trailing stop, RSI exit, time filters (weekend, evening, news), and **Historical Enhancer** JSON in alerts for webhooks and analytics.
+### BTC — 1H Preset
+![BTC 1H Forward Test](screenshots/BTC.jpg)
 
-**Requirements:** TradingView (Pine Script v5). Optional: webhook endpoint (e.g. your own execution agent) to receive alerts.
+### ETH — 1H Preset
+![ETH 1H Forward Test](screenshots/ETH.jpg)
 
----
+### SOL — 1H Preset
+![SOL 1H Forward Test](screenshots/SOL.jpg)
 
-## What is Ichimoku?
-
-**Ichimoku Kinko Hyo** (“one-glance cloud chart”) is a trend-following system: five components (Tenkan, Kijun, Senkou A/B “cloud,” Chikou) give trend direction, momentum, and dynamic support/resistance. Classic settings (9/26/52) target daily charts; this script uses **preset-optimized periods** for 5m/1h so the cloud and signals respond in line with shorter timeframes.
-
-**Entry logic (all must align when filters are on):** Tenkan/Kijun cross (or trend), price above/below cloud, Chikou confirmation, cloud color, ADX (trend strength), RSI (not overbought/oversold). **Exit logic:** initial stop/target (ATR-based or fixed %), breakeven, 3H/6H breakeven band, trailing stop, and RSI-based early exit.
-
----
-
-## What’s in v14
-
-| Area | v14 highlights |
-|------|----------------|
-| **6-hour breakeven** | Closes when P&amp;L enters a small profit band (e.g. +0.1% to +0.5%) after 6+ hours in the trade. |
-| **Granular monitoring** | `calc_on_every_tick=true` so exits trigger when conditions are met, not only on bar close. |
-| **Time filters** | Weekend block (Fri 04:00 PT – Mon 01:00 PT), evening block (20:00–01:00 PT), news filter (8–9 AM PT). |
-| **ADX acceleration** | Optional: require ADX to be rising (trend strengthening). |
-| **Historical Enhancer** | 100+ fields per entry/exit in alert JSON (Ichimoku, ADX, RSI, VWAP, volume, momentum, etc.). |
-| **Presets** | V14-optimized defaults for BTC, ETH, SOL, XRP (5m and 1h) and other listed presets. |
-| **Info panel** | On-chart table showing preset and key parameters. |
+### XRP — 1H Preset
+![XRP 1H Forward Test](screenshots/XRP.jpg)
 
 ---
 
-## Presets
+# Window-Normalized Compounding (Derived)
 
-Presets set Ichimoku periods, ADX, RSI, risk (ATR or fixed %), breakeven, trailing, and time filters per symbol/timeframe.
+To normalize uneven forward windows:
 
-- **Coinbase USA:** 5m and 1h for BTC (BIP), ETH (ETP), SOL (SLP), XRP (XPP).
-- **Coinbase INTX / Binance US / Kraken US:** 5m/15m BTC-style.
+CAGR = (1 + R)^(365 / days) − 1
 
-Leave **Use Preset Defaults** on for one-click optimized values, or turn it off to tune inputs manually.
+| Preset | Days | Compounded Monthly | Annualized CAGR |
+|--------|------|-------------------|-----------------|
+| BTC | 219 | ~3.75% | ~55.5% |
+| ETH | 219 | ~10.12% | ~217.6% |
+| SOL | 191 | ~11.22% | ~257.9% |
+| XRP | 191 | ~5.20% | ~83.7% |
 
----
-
-## Main features (v14)
-
-- **Ichimoku:** TK cross (or trend), cloud filter, cloud color, Chikou filter.
-- **ADX** (with optional acceleration filter).
-- **RSI** entry filter and **RSI exit** (activation % and long/short thresholds).
-- **Risk:** ATR-based or fixed % stop; take-profit %.
-- **Breakeven:** trigger % and lock %; optional **3-hour** and **6-hour** breakeven exits (profit band after hold time).
-- **Trailing stop:** trigger % and trail distance %.
-- **Time filters:** weekend block, evening block, news-volatility (8–9 AM PT).
-- **Historical Enhancer:** rich JSON in entry/exit alerts (100+ fields) for logging, execution, or ML.
+Annualized CAGR is mathematical normalization, not a guarantee of persistence.
 
 ---
 
-## Risk and guardrails
+# 4-Symbol Portfolio Normalization
 
-- **Position risk:** ATR-based or fixed % stop; take-profit; breakeven and trailing to lock gains.
-- **Time-based:** Weekend and evening entry blocks; news filter to avoid open chaos (in our tests, this improved outcomes; exact lift varies by symbol/regime).
-- **Hold-time exits:** 6H breakeven close when profit is in a small band after 6+ hours, to avoid giving back gains on stale trades.
-- **RSI exit:** Optional early exit when momentum fades (activation % and long/short thresholds).
+Derived monthly rates:
 
-Exits are evaluated on every tick when using default settings, so behavior matches execution agents that monitor frequently.
+- BTC ≈ 3.75%
+- ETH ≈ 10.12%
+- SOL ≈ 11.22%
+- XRP ≈ 5.20%
 
----
-
-## Strategy ID and alerts
-
-- **Strategy ID** is set by the **Timeframe Preset** (e.g. BTC 5m → `ichimoku-coinbase-btc-5m`, ETH 1h → `ichimoku-coinbase-eth-1h`). You can override it in **Strategy ID Override.**
-- **Alerts:** Create one alert per chart with **“Any alert() function call”** and your webhook URL. Leave the message empty; the script sends the full JSON (strategy_id, side, price, symbol, timeframe, historical_enhancer).
+Summed normalization (theoretical upper bound): ≈ 30.3% per month
 
 ---
 
-## Example alert payload
+# Capital Deployment Model
 
-Entry and exit alerts include a payload like the following (abbreviated). The `historical_enhancer` object contains 100+ fields (Ichimoku, ADX, RSI, VWAP, volume, momentum, etc.).
+Live deployment does NOT assume four independent capital pools.
 
-```json
-{
-  "strategy_id": "ichimoku-coinbase-btc-5m",
-  "side": "buy",
-  "price": 98085.0,
-  "cid": "20251209-192500",
-  "bar_time": "2025-12-09T19:25:00",
-  "symbol": "COINBASE:BIPZ2030",
-  "timeframe": "5",
-  "historical_enhancer": {
-    "entry_direction": "LONG",
-    "session": "US",
-    "day_of_week": "Monday",
-    "tenkan": 98050.0,
-    "kijun": 98020.0,
-    "cloud_bullish": true,
-    "price_above_cloud": true,
-    "adx": 15.5,
-    "rsi": 45.2,
-    "vwap_value": 98000.0,
-    "volume_ratio_5": 1.25
-  }
-}
-```
+Execution uses:
 
-Use your own webhook URL in TradingView; this repo does not contain any agent or server URLs.
+- 3 partitions
+- 1/3 capital per trade
+- 3× leverage
+- Maximum 3 concurrent positions
+- Effective exposure ≈ 1× per active trade
+
+Because signals overlap and capital is finite:
+
+- Realized blended return varies
+- Correlation clustering impacts DD
+- 30.3% is normalization math, not guaranteed performance
 
 ---
 
-## Quick start
+# Compounding Illustration (Model Only)
 
-1. **Open TradingView** → Pine Editor.
-2. **Paste** the contents of `easy_ichimoku_v14.pine` into a new script → **Add to chart.**
-3. **Set chart** to the desired symbol (e.g. `COINBASE:BIPZ2030` for BTC) and timeframe (5m or 1h).
-4. **Strategy settings** → **Timeframe Preset** → choose the matching preset (e.g. "5Min BIP / BTC PERP (Coinbase USA)").
-5. Leave **Use Preset Defaults** checked so optimized values load.
-6. **Properties** → set commission (e.g. 0.04%), execution (e.g. after fill + on every tick), position size (default 80%).
-7. **(Optional)** Create an alert → condition: **Any alert() function call** → webhook URL = your endpoint → message empty.
+If ~30% monthly were sustained:
 
----
+Final = Initial × (1.30)^n
 
-## Repository structure
+Starting capital: $2,000
 
-```text
-easy-ichimoku/
-├── README.md                 # This file
-├── CHANGELOG.md              # Version history and v14 highlights
-└── easy_ichimoku_v14.pine    # Full v14 strategy (Pine Script v5)
-```
+| Month | Balance |
+|--------|---------|
+| 0 | $2,000 |
+| 1 | $2,600 |
+| 2 | $3,380 |
+| 3 | $4,394 |
+| 4 | $5,712 |
+| 5 | $7,426 |
+| 6 | $9,654 |
+| 7 | $12,550 |
+| 8 | $16,315 |
+| 9 | $21,209 |
+| 10 | $27,572 |
+| 11 | $35,843 |
+| 12 | $46,596 |
 
----
-
-## Limitations and robustness plan
-
-- **Regime dependence** — Performance varies in trend vs chop; the strategy is tuned for trend-following.
-- **Funding, fees, slippage** — Futures funding and execution costs affect live P&L; backtest/forward test use stated commission only.
-- **Execution model** — Intrabar (every tick) vs bar-close execution can change fill quality and drawdowns.
-- **Correlation spikes** — Crypto majors can move together; blended estimates do not account for simultaneous drawdowns.
-- **Preset drift** — Market structure shifts over time; presets benefit from periodic re-validation.
-- **Forward test** — Continuing through the year to evaluate robustness, consistency, and capital efficiency across regimes.
+This demonstrates compounding mechanics only. Realized performance depends on regime, execution, funding, slippage, and concurrency.
 
 ---
 
-## Disclaimer
+# Strategy Architecture
 
-**This repository is for educational and research purposes only. It does not constitute financial, investment, or trading advice.** Trading derivatives involves substantial risk of loss. Past backtest and forward test results do not guarantee future performance; live results will depend on execution, fees, slippage, and market conditions. You are solely responsible for your own trading and risk decisions. Validate in paper/simulated environments before any live use. Consult a qualified professional for advice specific to your situation.
+TradingView Strategy  
+↓ webhook JSON  
+Easy TradingView Agent  
+↓ execution engine  
+Broker API (Coinbase Perp Nano Futures)  
+↓  
+3-Partition Capital Model  
+
+Alerts include enriched JSON payloads (100+ fields).
 
 ---
 
-## License
+# What’s Included
 
-Provided as-is. See [LICENSE](LICENSE) in this repository if present.
+- easy_ichimoku_v14.pine
+- Presets for BTC, ETH, SOL, XRP (5m + 1H)
+- Full layered exit logic
+- Historical Enhancer JSON payloads
+
+Requirements:
+- TradingView (Pine v5)
+- Optional webhook execution agent
 
 ---
 
-*Public repo. Use your own webhook URL and broker/agent; do not commit credentials. Production deployment uses a separate, private project.*
+# Key Features
+
+- Ichimoku cloud structure validation
+- ADX trend strength + optional acceleration
+- RSI entry + RSI fade exit
+- ATR or fixed % stop
+- Take profit targets
+- Breakeven + 6H BE band
+- Trailing stop
+- Weekend + evening block
+- 8–9 AM PT volatility guard
+- Intrabar exit evaluation
+
+---
+
+# Risk Considerations
+
+- Trend-following systems underperform in chop
+- Funding + slippage impact net results
+- Correlation spikes increase DD
+- Presets require periodic validation
+- Forward testing continues
+
+---
+
+# Disclaimer
+
+Educational and research purposes only.  
+Not financial advice.  
+Derivatives trading involves substantial risk of loss.  
+Past results do not guarantee future performance.
