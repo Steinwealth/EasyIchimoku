@@ -101,24 +101,96 @@ Summed normalization (theoretical upper bound): ≈ 30.3% per month
 
 ---
 
-# Capital Deployment Model
+# Capital Deployment & Execution Model
 
-Live deployment does NOT assume four independent capital pools.
+The TradingView strategy does not execute trades directly.
 
-Execution uses:
+When a signal triggers:
 
-- 3 partitions
-- 1/3 capital per trade
-- 3× leverage
+TradingView Strategy  
+→ emits structured JSON webhook  
+→ Easy TradingView Agent receives signal  
+→ Agent validates capital availability  
+→ Agent executes via broker API (Coinbase Perp Nano Futures)
+
+All capital logic is enforced at the Agent layer — not in TradingView.
+
+---
+
+## Partition Architecture (Agent-Enforced)
+
+The Easy TradingView Agent operates under a controlled capital framework:
+
+- 3 capital partitions
+- 1/3 account equity allocated per position
+- 3× leverage per trade
 - Maximum 3 concurrent positions
-- Effective exposure ≈ 1× per active trade
+- Effective exposure ≈ 1× per active trade (leverage offset by sizing)
 
-Because signals overlap and capital is finite:
+This ensures:
 
-- Realized blended return varies
-- Correlation clustering impacts DD
-- 30.3% is normalization math, not guaranteed performance
+- No single trade consumes full account risk
+- Capital exposure is bounded
+- Concurrency is capped
+- Exposure scales predictably
+- Capital is dynamically recycled as positions close
 
+---
+
+## Concurrency & Signal Handling
+
+Signals across BTC, ETH, SOL, and XRP may overlap.
+
+When multiple alerts arrive:
+
+- The Agent assigns the next available partition
+- If all 3 partitions are active, additional signals are ignored
+- No pyramiding beyond partition limits
+- No capital stacking during correlation spikes
+
+This prevents uncontrolled leverage expansion during volatility clusters.
+
+---
+
+## Risk & Correlation Management
+
+Because crypto majors often move together:
+
+- Simultaneous entries may increase portfolio drawdown
+- Correlation clustering can compress performance during regime shifts
+- Realized blended returns vary based on signal overlap
+
+The 30.3% blended monthly normalization is a theoretical upper bound derived from independent symbol compounding.
+
+Live results depend on:
+
+- Signal timing overlap
+- Regime persistence
+- Funding costs
+- Slippage
+- Exchange liquidity
+- Agent partition availability
+
+---
+
+## Why This Matters
+
+Many public strategy repos show per-symbol backtests without accounting for:
+
+- Capital reuse
+- Concurrency limits
+- Correlation risk
+- Real execution constraints
+
+This deployment model explicitly accounts for:
+
+- Capital partitioning
+- Position overlap
+- Leverage normalization
+- Portfolio-level exposure control
+- Real broker execution
+
+The Easy TradingView Agent enforces these constraints automatically at execution time.
 ---
 
 # Compounding Illustration (Model Only)
