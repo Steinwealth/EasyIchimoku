@@ -1,5 +1,7 @@
 # Easy Ichimoku v14
 
+**Last updated:** March 2026
+
 **€£$¥ Ichimoku v14** — Production-style TradingView Pine Script (v5) implementing a preset-optimized Ichimoku Cloud trend-following system with layered filters, structured exits, and webhook-ready JSON alerts for automated execution.
 
 Part of the **Easy Trading Software** suite.
@@ -255,7 +257,7 @@ Requirements:
 - RSI entry + RSI fade exit
 - ATR or fixed % stop
 - Take profit targets
-- Breakeven + 6H BE band
+- Breakeven + 6H BE band (on by default for 1H presets)
 - Trailing stop
 - Weekend + evening block
 - 8–9 AM PT volatility guard
@@ -270,6 +272,22 @@ Requirements:
 - Correlation spikes increase DD
 - Presets require periodic validation
 - Forward testing continues
+
+---
+
+# Historical Presets
+
+Preset settings and backtest results are recorded in **EASY_ICHIMOKU_V14_GUIDE.md** (Section 13) so we can track performance and retain prior configurations when presets are updated.
+
+**5Min ETP / ETH PERP (Coinbase USA) — Record date March 7, 2026**
+
+| Preset | Backtest window | Total return | Max DD | Profitability | Profit factor | 30-day est. gain | 1-year est. gain |
+|--------|------------------|-------------|--------|---------------|---------------|------------------|------------------|
+| **Current** (T17 K12 SB9 D8; ADX 14/13; RSI L13; RSI exit 43/55; BE 1.5/1.2%; 6H BE ON 0.1/0.1%; Trail 1.5/1%) | Jul 18 2025 – Mar 7 2026 | **+76.33%** | 6.77% | 50% | 1.93 | **~7.65%** | **~103%** |
+| **Previous** (archived) | Jul 18 2025 – Mar 7 2026 | +69.33% | 12.4% | 50% | 1.5 | ~7.1% | ~92% |
+
+_30-day / 1-year: (1 + total_return)^(30/232)−1 and (1 + total_return)^(365/232)−1. Backtest = 232 days._  
+See **EASY_ICHIMOKU_V14_GUIDE.md** Section 13 for full setting lists and methodology.
 
 ---
 
