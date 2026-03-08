@@ -48,12 +48,14 @@ Forward test windows captured directly from TradingView Strategy Tester.
 
 ## 1H Preset Results
 
+_Record date: March 7, 2026. Source: TradingView Strategy Tester backtest screenshots._
+
 | Preset | 30 Day Est | 1 Year Est | Max DD | Win Rate | Trades | Profit Factor | Window | Total P&L |
 |--------|------------|------------|--------|----------|--------|---------------|--------|-----------|
-| BTC (BIP) | ~3.75% | ~55.5% | 4.25% | 67.61% | 71 | 2.122 | Jul 18 2025 – Feb 22 2026 | +30.34% |
-| ETH (ETP) | ~10.12% | ~217.6% | 4.93% | 80.00% | 70 | 11.402 | Jul 18 2025 – Feb 22 2026 | +100.04% |
-| SOL (SLP) | ~11.22% | ~257.9% | 8.64% | 71.79% | 78 | 2.767 | Aug 15 2025 – Feb 22 2026 | +94.89% |
-| XRP (XPP) | ~5.20% | ~83.7% | 8.50% | 76.71% | 73 | 2.194 | Aug 15 2025 – Feb 22 2026 | +37.47% |
+| BTC (BIP) | ~3.78% | ~54.7% | 4.25% | 66.67% | 78 | 2.148 | Jul 18 2025 – Mar 7 2026 | +34.47% |
+| ETH (ETP) | ~7.65% | ~125% | 14.26% | 78.38% | 74 | 3.082 | Jul 18 2025 – Mar 7 2026 | +78.10% |
+| SOL (SLP) | ~9.55% | ~158% | 8.64% | 71.95% | 82 | 2.413 | Aug 15 2025 – Mar 7 2026 | +89.10% |
+| XRP (XPP) | ~4.04% | ~56.1% | 8.50% | 72.84% | 81 | 1.787 | Aug 15 2025 – Mar 7 2026 | +31.38% |
 
 ## 5min ETP ETH Preset Results
 
@@ -100,10 +102,10 @@ CAGR = (1 + R)^(365 / days) − 1
 
 | Preset | Days | Compounded Monthly | Annualized CAGR |
 |--------|------|-------------------|-----------------|
-| BTC | 219 | ~3.75% | ~55.5% |
-| ETH | 219 | ~10.12% | ~217.6% |
-| SOL | 191 | ~11.22% | ~257.9% |
-| XRP | 191 | ~5.20% | ~83.7% |
+| BTC | 232 | ~3.78% | ~54.7% |
+| ETH | 232 | ~7.65% | ~125% |
+| SOL | 205 | ~9.55% | ~158% |
+| XRP | 205 | ~4.04% | ~56.1% |
 
 **5min ETP ETH preset**
 
@@ -117,14 +119,14 @@ Annualized CAGR is mathematical normalization, not a guarantee of persistence.
 
 # 4-Symbol Portfolio Normalization
 
-Derived monthly rates:
+Derived monthly rates (from 1H preset backtests, record date Mar 7, 2026):
 
-- BTC ≈ 3.75%
-- ETH ≈ 10.12%
-- SOL ≈ 11.22%
-- XRP ≈ 5.20%
+- BTC ≈ 3.78%
+- ETH ≈ 7.65%
+- SOL ≈ 9.55%
+- XRP ≈ 4.04%
 
-Summed normalization (theoretical upper bound): ≈ 30.3% per month
+Summed normalization (theoretical upper bound): ≈ 25.0% per month
 
 ---
 
@@ -187,7 +189,7 @@ Because crypto majors often move together:
 - Correlation clustering can compress performance during regime shifts
 - Realized blended returns vary based on signal overlap
 
-The 30.3% blended monthly normalization is a theoretical upper bound derived from independent symbol compounding.
+The ~25% blended monthly normalization (from current 1H backtests) is a theoretical upper bound derived from independent symbol compounding.
 
 Live results depend on:
 
@@ -222,27 +224,27 @@ The Easy TradingView Agent enforces these constraints automatically at execution
 
 # Compounding Illustration (Model Only)
 
-If ~30% monthly were sustained:
+If ~25% monthly (1H blended upper bound) were sustained:
 
-Final = Initial × (1.30)^n
+Final = Initial × (1.25)^n
 
 Starting capital: $2,000
 
 | Month | Balance |
 |--------|---------|
 | 0 | $2,000 |
-| 1 | $2,600 |
-| 2 | $3,380 |
-| 3 | $4,394 |
-| 4 | $5,712 |
-| 5 | $7,426 |
-| 6 | $9,654 |
-| 7 | $12,550 |
-| 8 | $16,315 |
-| 9 | $21,209 |
-| 10 | $27,572 |
-| 11 | $35,843 |
-| 12 | $46,596 |
+| 1 | $2,500 |
+| 2 | $3,125 |
+| 3 | $3,906 |
+| 4 | $4,883 |
+| 5 | $6,104 |
+| 6 | $7,629 |
+| 7 | $9,537 |
+| 8 | $11,921 |
+| 9 | $14,901 |
+| 10 | $18,626 |
+| 11 | $23,283 |
+| 12 | $29,104 |
 
 This demonstrates compounding mechanics only. Realized performance depends on regime, execution, funding, slippage, and concurrency.
 
