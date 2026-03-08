@@ -306,10 +306,10 @@ Preset settings and backtest results are recorded in **EASY_ICHIMOKU_V14_GUIDE.m
 
 **5Min ETP / ETH PERP (Coinbase USA) — Record date March 7, 2026**
 
-| Preset | Settings (summary) | Backtest window | Total return | Max DD | Profitability | Profit factor | 30-day est. | 1-year est. |
-|--------|--------------------|------------------|-------------|--------|---------------|---------------|-------------|-------------|
-| **Current** | T17 K12 SB9 D8; ADX 14/13; RSI L13; RSI exit 43/55; BE 1.5/1.2%; 6H BE ON 0.1/0.1%; Trail 1.5/1% | Jul 18 2025 – Mar 7 2026 | **+76.33%** | 6.77% | 50% | 1.93 | ~7.65% | ~103% |
-| **Previous** (archived Mar 7, 2026) | T16 K12 SB10 D10; ADX 13/14; RSI L9; RSI exit 25/65; BE 1.5/0.5%; 6H BE OFF; Trail 1.5/1.3% | Jul 18 2025 – Mar 7 2026 | +69.33% | 12.4% | 50% | 1.5 | ~7.1% | ~92% |
+| Preset | 30 Day Est | 1 Year Est | Max DD | Win Rate | Trades | Profit Factor | Window | Total P&L | Settings (summary) |
+|--------|------------|------------|--------|----------|--------|---------------|--------|-----------|--------------------|
+| **Current** | ~7.65% | ~103% | 6.77% | 50% | — | 1.93 | Jul 18 2025 – Mar 7 2026 | **+76.33%** | T17 K12 SB9 D8; ADX 14/13; RSI L13; exit 43/55; BE 1.5/1.2%; 6H BE ON; Trail 1.5/1% |
+| **Previous** (archived Mar 7, 2026) | ~7.1% | ~92% | 12.4% | 50% | — | 1.5 | Jul 18 2025 – Mar 7 2026 | +69.33% | T16 K12 SB10 D10; ADX 13/14; RSI L9; exit 25/65; BE 1.5/0.5%; 6H BE OFF; Trail 1.5/1.3% |
 
 _30-day / 1-year: (1 + total_return)^(30/232)−1 and (1 + total_return)^(365/232)−1. Backtest = 232 days._  
 **Full settings and results:** **EASY_ICHIMOKU_V14_GUIDE.md** Section 13 (current and previous presets with complete parameter lists and when results were recorded).
