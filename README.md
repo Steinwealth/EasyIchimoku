@@ -48,18 +48,18 @@ Forward test windows captured directly from TradingView Strategy Tester.
 
 ## 1H Preset Results
 
-| Preset | Window | Total P&L | Max DD | Trades | Win Rate | Profit Factor |
-|--------|--------|-----------|--------|--------|----------|---------------|
-| BTC (BIP) | Jul 18 2025 – Feb 22 2026 | +30.34% | 4.25% | 71 | 67.61% | 2.122 |
-| ETH (ETP) | Jul 18 2025 – Feb 22 2026 | +100.04% | 4.93% | 70 | 80.00% | 11.402 |
-| SOL (SLP) | Aug 15 2025 – Feb 22 2026 | +94.89% | 8.64% | 78 | 71.79% | 2.767 |
-| XRP (XPP) | Aug 15 2025 – Feb 22 2026 | +37.47% | 8.50% | 73 | 76.71% | 2.194 |
+| Preset | 30 Day Est | 1 Year Est | Max DD | Win Rate | Trades | Profit Factor | Window | Total P&L |
+|--------|------------|------------|--------|----------|--------|---------------|--------|-----------|
+| BTC (BIP) | ~3.75% | ~55.5% | 4.25% | 67.61% | 71 | 2.122 | Jul 18 2025 – Feb 22 2026 | +30.34% |
+| ETH (ETP) | ~10.12% | ~217.6% | 4.93% | 80.00% | 70 | 11.402 | Jul 18 2025 – Feb 22 2026 | +100.04% |
+| SOL (SLP) | ~11.22% | ~257.9% | 8.64% | 71.79% | 78 | 2.767 | Aug 15 2025 – Feb 22 2026 | +94.89% |
+| XRP (XPP) | ~5.20% | ~83.7% | 8.50% | 76.71% | 73 | 2.194 | Aug 15 2025 – Feb 22 2026 | +37.47% |
 
 ## 5min ETP ETH Preset Results
 
-| Preset | Window | Total P&L | Max DD | Profitability | Profit Factor | 30-day est. | 1-year est. |
-|--------|--------|-----------|--------|---------------|---------------|-------------|-------------|
-| **ETH (ETP) 5min** | Jul 18 2025 – Mar 7 2026 | **+76.33%** | 6.77% | 50% | 1.93 | ~7.65% | ~103% |
+| Preset | 30 Day Est | 1 Year Est | Max DD | Win Rate | Trades | Profit Factor | Window | Total P&L |
+|--------|------------|------------|--------|----------|--------|---------------|--------|-----------|
+| **ETH (ETP) 5min** | ~7.65% | ~103% | 6.77% | 50% | — | 1.93 | Jul 18 2025 – Mar 7 2026 | **+76.33%** |
 
 _5min ETP preset: T17 K12 Senkou B9 Disp8; ADX 14/13; RSI L13; RSI exit 43/55; BE 1.5/1.2%; 6H BE ON 0.1/0.1%; Trail 1.5/1%. Record date March 7, 2026. See Historical Presets (below) and Guide Section 13 for full settings._
 
