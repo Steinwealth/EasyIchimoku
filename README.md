@@ -33,7 +33,7 @@ This is a full production strategy — not a snippet.
 All performance shown uses:
 
 - Venue: Coinbase USA Perp Nano Futures
-- Timeframe: 1H preset configurations
+- Timeframe: 1H preset configurations (1H results); 5min for ETH ETP 5min preset
 - Commission: 0.04%
 - Position size: 80%
 - Execution: `calc_on_every_tick=true`
@@ -46,6 +46,8 @@ Intrabar evaluation materially impacts exit precision. Results differ under bar-
 
 Forward test windows captured directly from TradingView Strategy Tester.
 
+## 1H Preset Results
+
 | Preset | Window | Total P&L | Max DD | Trades | Win Rate | Profit Factor |
 |--------|--------|-----------|--------|--------|----------|---------------|
 | BTC (BIP) | Jul 18 2025 – Feb 22 2026 | +30.34% | 4.25% | 71 | 67.61% | 2.122 |
@@ -53,23 +55,38 @@ Forward test windows captured directly from TradingView Strategy Tester.
 | SOL (SLP) | Aug 15 2025 – Feb 22 2026 | +94.89% | 8.64% | 78 | 71.79% | 2.767 |
 | XRP (XPP) | Aug 15 2025 – Feb 22 2026 | +37.47% | 8.50% | 73 | 76.71% | 2.194 |
 
+## 5min ETP ETH Preset Results
+
+| Preset | Window | Total P&L | Max DD | Profitability | Profit Factor | 30-day est. | 1-year est. |
+|--------|--------|-----------|--------|---------------|---------------|-------------|-------------|
+| **ETH (ETP) 5min** | Jul 18 2025 – Mar 7 2026 | **+76.33%** | 6.77% | 50% | 1.93 | ~7.65% | ~103% |
+
+_5min ETP preset: T17 K12 Senkou B9 Disp8; ADX 14/13; RSI L13; RSI exit 43/55; BE 1.5/1.2%; 6H BE ON 0.1/0.1%; Trail 1.5/1%. Record date March 7, 2026. See Historical Presets (below) and Guide Section 13 for full settings._
+
 ---
 
 # Forward Test Screenshots
 
 All screenshots are unedited Strategy Tester exports using the settings listed above.
 
-### BTC — 1H Preset
+### 1H Presets
+
+#### BTC — 1H Preset
 ![BTC 1H Forward Test](screenshots/BTC.jpg)
 
-### ETH — 1H Preset
+#### ETH — 1H Preset
 ![ETH 1H Forward Test](screenshots/ETH.jpg)
 
-### SOL — 1H Preset
+#### SOL — 1H Preset
 ![SOL 1H Forward Test](screenshots/SOL.jpg)
 
-### XRP — 1H Preset
+#### XRP — 1H Preset
 ![XRP 1H Forward Test](screenshots/XRP.jpg)
+
+### 5min Preset
+
+#### ETH — 5min Preset
+![ETH 5min Forward Test](screenshots/ETH5min.png)
 
 ---
 
@@ -79,12 +96,20 @@ To normalize uneven forward windows:
 
 CAGR = (1 + R)^(365 / days) − 1
 
+**1H presets**
+
 | Preset | Days | Compounded Monthly | Annualized CAGR |
 |--------|------|-------------------|-----------------|
 | BTC | 219 | ~3.75% | ~55.5% |
 | ETH | 219 | ~10.12% | ~217.6% |
 | SOL | 191 | ~11.22% | ~257.9% |
 | XRP | 191 | ~5.20% | ~83.7% |
+
+**5min ETP ETH preset**
+
+| Preset | Days | Compounded Monthly | Annualized CAGR |
+|--------|------|-------------------|-----------------|
+| ETH (ETP) 5min | 232 | ~7.65% | ~103% |
 
 Annualized CAGR is mathematical normalization, not a guarantee of persistence.
 
