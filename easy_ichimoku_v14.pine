@@ -6,6 +6,13 @@ strategy(title='€£$¥ Ichimoku v14', shorttitle='€£$¥ Ichimoku v14', over
 // 
 // Based on V13 with 6-Hour Breakeven protection
 // Focus on proven Ichimoku signals with proper risk management
+//
+// 5Min ETP ETH (Coinbase USA) preset reference (Mar 2026):
+//   Ichimoku: T17 K12 SenkouB9 Disp8 | ADX L14 Thr13 Accel25
+//   Time: Weekend ON, Evening 8PM-1AM PT ON, News 8-9AM PT ON
+//   RSI: Length 13 OB60 OS30 | RSI exit: Long<43 Short>55 Act 0.2% | Risk: ATR SL1.4% TP4% ATR L2 Mult10
+//   BE 1.5%/1.2% | 6H BE ON 0.1%/0.1% | Trail 1.5%/1%
+//   Execution: calc_on_order_fills + calc_on_every_tick (On Bar Close = No)
 // ============================================
 
 // ============================================
@@ -90,10 +97,10 @@ laggingSpan2Periods_input = input.int(15, "Senkou B", minval=1, tooltip="Default
 displacement_input = input.int(3, "Displacement", minval=1, tooltip="Default: 3 (Optimized BTC v14). Preset auto-sets per timeframe.", group="☁️ Ichimoku")
 
 // Apply preset or manual values - V14 OPTIMIZED BTC PRESET
-conversionPeriods = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 4 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 6 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 16 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 2 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 16 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 4 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 13 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 5 : preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 15 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 11 : 9) : conversionPeriods_input
+conversionPeriods = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 4 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 6 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 17 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 2 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 16 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 4 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 13 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 5 : preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 15 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 11 : 9) : conversionPeriods_input
 basePeriods = use_preset_values ? (preset == "5Min (Binance US) BTCUSDT.P" ? 12 : preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 12 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 8 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 12 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 5 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 5 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 9 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 12 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 11 : preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 11 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 10 : 26) : basePeriods_input
-laggingSpan2Periods = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 15 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 8 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 10 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 10 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 3 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 9 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 21 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 10 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 18 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 35 : 52) : laggingSpan2Periods_input
-displacement = use_preset_values ? (preset == "5Min (Binance US) BTCUSDT.P" ? 10 : preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 3 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 1 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 10 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 5 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 1 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 1 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 1 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 3 : preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 7 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 10 : 26) : displacement_input
+laggingSpan2Periods = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 15 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 8 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 9 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 10 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 3 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 9 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 21 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 10 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 18 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 35 : 52) : laggingSpan2Periods_input
+displacement = use_preset_values ? (preset == "5Min (Binance US) BTCUSDT.P" ? 10 : preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 3 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 1 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 8 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 5 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 1 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 1 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 1 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 3 : preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 7 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 10 : 26) : displacement_input
 
 use_tk_cross = input.bool(true, "TK Cross Filter", group="☁️ Ichimoku")
 use_cloud_filter = input.bool(true, "Cloud Filter", group="☁️ Ichimoku")
@@ -114,9 +121,9 @@ use_evening_entry_block_input = input.bool(true, "Disable Entries 20:00-1:00 8PM
 use_news_filter_input = input.bool(true, "📰 News Volatility Filter 8-9AM PT", tooltip="Avoids market open chaos and news-driven volatility. +3% gain, +5% accuracy in testing.", group="⏰ WEEKEND & DAILY BLOCKS")
 
 // Apply preset or manual time filter values
-use_weekend_entry_block_3 = use_preset_values ? (preset == "1H BIP / BTC PERP (Coinbase USA)" or preset == "1H ETP / ETH PERP (Coinbase USA)" or preset == "1H SLP / SOL PERP (Coinbase USA)" or preset == "1H XPP / XRP PERP (Coinbase USA)" ? true : use_weekend_entry_block_3_input) : use_weekend_entry_block_3_input
-use_evening_entry_block = use_preset_values ? (preset == "1H BIP / BTC PERP (Coinbase USA)" or preset == "1H ETP / ETH PERP (Coinbase USA)" or preset == "1H SLP / SOL PERP (Coinbase USA)" or preset == "1H XPP / XRP PERP (Coinbase USA)" ? true : use_evening_entry_block_input) : use_evening_entry_block_input
-use_news_filter = use_preset_values ? (preset == "1H BIP / BTC PERP (Coinbase USA)" or preset == "1H ETP / ETH PERP (Coinbase USA)" or preset == "1H SLP / SOL PERP (Coinbase USA)" or preset == "1H XPP / XRP PERP (Coinbase USA)" ? true : use_news_filter_input) : use_news_filter_input
+use_weekend_entry_block_3 = use_preset_values ? (preset == "5Min ETP / ETH PERP (Coinbase USA)" or preset == "1H BIP / BTC PERP (Coinbase USA)" or preset == "1H ETP / ETH PERP (Coinbase USA)" or preset == "1H SLP / SOL PERP (Coinbase USA)" or preset == "1H XPP / XRP PERP (Coinbase USA)" ? true : use_weekend_entry_block_3_input) : use_weekend_entry_block_3_input
+use_evening_entry_block = use_preset_values ? (preset == "5Min ETP / ETH PERP (Coinbase USA)" or preset == "1H BIP / BTC PERP (Coinbase USA)" or preset == "1H ETP / ETH PERP (Coinbase USA)" or preset == "1H SLP / SOL PERP (Coinbase USA)" or preset == "1H XPP / XRP PERP (Coinbase USA)" ? true : use_evening_entry_block_input) : use_evening_entry_block_input
+use_news_filter = use_preset_values ? (preset == "5Min ETP / ETH PERP (Coinbase USA)" or preset == "1H BIP / BTC PERP (Coinbase USA)" or preset == "1H ETP / ETH PERP (Coinbase USA)" or preset == "1H SLP / SOL PERP (Coinbase USA)" or preset == "1H XPP / XRP PERP (Coinbase USA)" ? true : use_news_filter_input) : use_news_filter_input
 
 // LA timezone variables for weekend block
 la_hour = hour(time, "America/Los_Angeles")
@@ -139,8 +146,8 @@ entry_window_ok = not weekend_block_active and not evening_block_active
 // FIXED: BTC ADX length changed from 1 to 13 (Dec 12, 2025) - ADX length 1 produces unstable values (100.00)
 // NOTE: SOL 1H and XRP 1H currently use ADX length 1 - may need review after backtesting
 // ADX length 1 can produce unstable values (100.00) - safeguard added below to cap at 99.99
-adx_length = use_preset_values ? (preset == "5Min (Binance US) BTCUSDT.P" ? 13 : preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 13 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 3 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 13 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 10 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 2 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 3 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 1 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 3 : preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 25 : 14) : adx_length_input
-adx_threshold = use_preset_values ? (preset == "5Min (Binance US) BTCUSDT.P" ? 1.0 : preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 1.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 3.0 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 14.0 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 10.0 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 1.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 3.0 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 1.0 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 3.0 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 12.0 : preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 10.0 : 20.0) : adx_threshold_input
+adx_length = use_preset_values ? (preset == "5Min (Binance US) BTCUSDT.P" ? 13 : preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 13 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 3 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 14 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 10 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 2 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 3 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 1 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 3 : preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 25 : 14) : adx_length_input
+adx_threshold = use_preset_values ? (preset == "5Min (Binance US) BTCUSDT.P" ? 1.0 : preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 1.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 3.0 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 13.0 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 10.0 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 1.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 3.0 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 1.0 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 3.0 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 12.0 : preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 10.0 : 20.0) : adx_threshold_input
 
 // ============================================
 // RSI FILTER
@@ -154,7 +161,7 @@ rsi_avoid_extreme_input = input.bool(true, "Avoid Extreme RSI", tooltip="Default
 
 // Apply preset or manual RSI values - V14 OPTIMIZED BTC PRESET
 use_rsi_filter = use_preset_values ? (preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min BIP / BTC PERP (Coinbase USA)" or preset == "1H BIP / BTC PERP (Coinbase USA)" or preset == "5Min ETP / ETH PERP (Coinbase USA)" or preset == "1H ETP / ETH PERP (Coinbase USA)" or preset == "5Min SLP / SOL PERP (Coinbase USA)" or preset == "1H SLP / SOL PERP (Coinbase USA)" or preset == "5Min XPP / XRP PERP (Coinbase USA)" or preset == "1H XPP / XRP PERP (Coinbase USA)" or preset == "5Min (Kraken US) BTCUSD.P" or preset == "5Min (Binance US) BTCUSDT.P" or preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P") : use_rsi_filter_input
-rsi_length = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 3 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 5 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" ? 7 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 9 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 7 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 5 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 3 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 7 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 7 : preset == "5Min (Kraken US) BTCUSD.P" ? 7 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 10 : 14) : rsi_length_input
+rsi_length = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 3 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 5 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" ? 7 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 13 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 7 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 5 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 3 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 7 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 7 : preset == "5Min (Kraken US) BTCUSD.P" ? 7 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 10 : 14) : rsi_length_input
 rsi_overbought = use_preset_values ? (preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" ? 65.0 : preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 70.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 65.0 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 60.0 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 60.0 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 60.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 85.0 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 60.0 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 60.0 : preset == "5Min (Kraken US) BTCUSD.P" ? 65.0 : 75.0) : rsi_overbought_input
 rsi_oversold = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 30.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 29.0 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" ? 31.0 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 30.0 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 20.0 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 40.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 18.0 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 35.0 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 33.0 : preset == "5Min (Kraken US) BTCUSD.P" ? 30.0 : 25.0) : rsi_oversold_input
 rsi_avoid_extreme = use_preset_values ? true : rsi_avoid_extreme_input
@@ -171,8 +178,8 @@ rsi_exit_activation_pct_input = input.float(0.7, "RSI Exit Activation %", minval
 use_rsi_exit_default = preset == "5Min ETP / ETH PERP (Coinbase USA)" or preset == "1H ETP / ETH PERP (Coinbase USA)" or preset == "1H BIP / BTC PERP (Coinbase USA)" or preset == "1H SLP / SOL PERP (Coinbase USA)" or preset == "1H XPP / XRP PERP (Coinbase USA)" ? true : not (preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P")
 
 use_rsi_exit = (use_preset_values ? use_rsi_exit_default : use_rsi_exit_input) and use_rsi_exit_input
-rsi_exit_long = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 30.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 40.0 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 25.0 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 50.0 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 20.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 30.0 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 25.0 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 45.0 : 45.0) : rsi_exit_long_input
-rsi_exit_short = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 74.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 60.0 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 65.0 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 50.0 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 80.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 77.0 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 75.0 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 55.0 : 55.0) : rsi_exit_short_input
+rsi_exit_long = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 30.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 40.0 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 43.0 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 50.0 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 20.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 30.0 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 25.0 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 45.0 : 45.0) : rsi_exit_long_input
+rsi_exit_short = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 74.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 60.0 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 55.0 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 50.0 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 80.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 77.0 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 75.0 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 55.0 : 55.0) : rsi_exit_short_input
 rsi_exit_activation_pct = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 0.7 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.1 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 0.2 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 0.1 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 0.3 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 0.1 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 0.1 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 0.1 : 1.5) : rsi_exit_activation_pct_input
 
 // ============================================
@@ -202,7 +209,7 @@ breakeven_level_input = input.float(0.3, "Breakeven Lock %", minval=0, maxval=2,
 
 // Apply preset or manual breakeven - V14 OPTIMIZED BTC PRESET
 breakeven_trigger = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 1.5 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 1.5 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" ? 1.5 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 1.5 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 1.6 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 3.5 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 1.8 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 1.5 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 1.5 : preset == "5Min (Kraken US) BTCUSD.P" ? 0.5 : 2.0) : breakeven_trigger_input
-breakeven_level = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 0.3 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.5 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 0.5 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 1.1 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 1.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 1.5 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 0.5 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 0.8 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 0.5 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 0.05 : 0.5) : breakeven_level_input
+breakeven_level = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 0.3 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.5 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 1.2 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 1.1 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 1.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 1.5 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 0.5 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 0.8 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 0.5 : preset == "15Min (Coinbase INTX) BTCUSDC.P" or preset == "15Min (Binance US) BTCUSDT.P" ? 0.05 : 0.5) : breakeven_level_input
 
 // 6-Hour Breakeven Protection
 use_6hour_breakeven_input = input.bool(false, "6-Hour Breakeven Exit", tooltip="Default: OFF. Automatically closes positions within +0.1% to +0.5% gain after being open for 6+ hours. Prevents losses from trades held too long. DISABLED for 5min presets by default - needs review/testing.", group="🛡️ Breakeven Protection")
@@ -210,22 +217,10 @@ breakeven_6h_min_pct_input = input.float(0.1, "6H Breakeven Min %", minval=0.0, 
 breakeven_6h_max_pct_input = input.float(0.5, "6H Breakeven Max %", minval=0.1, maxval=2.0, step=0.1, tooltip="Default: 0.5%. Maximum profit % to trigger 6-hour breakeven exit.", group="🛡️ Breakeven Protection")
 
 // Apply preset or manual 6-hour breakeven - DISABLED by default for all 5min presets (needs review/testing)
-use_6hour_breakeven = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" or preset == "5Min ETP / ETH PERP (Coinbase USA)" or preset == "5Min SLP / SOL PERP (Coinbase USA)" or preset == "5Min XPP / XRP PERP (Coinbase USA)" ? false : preset == "1H BIP / BTC PERP (Coinbase USA)" or preset == "1H ETP / ETH PERP (Coinbase USA)" or preset == "1H SLP / SOL PERP (Coinbase USA)" or preset == "1H XPP / XRP PERP (Coinbase USA)" ? true : true) : use_6hour_breakeven_input
+use_6hour_breakeven = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" or preset == "5Min SLP / SOL PERP (Coinbase USA)" or preset == "5Min XPP / XRP PERP (Coinbase USA)" ? false : preset == "5Min ETP / ETH PERP (Coinbase USA)" or preset == "1H BIP / BTC PERP (Coinbase USA)" or preset == "1H ETP / ETH PERP (Coinbase USA)" or preset == "1H SLP / SOL PERP (Coinbase USA)" or preset == "1H XPP / XRP PERP (Coinbase USA)" ? true : true) : use_6hour_breakeven_input
 // UPDATED: Range detects when price ENTERS range using calc_on_every_tick=true for granular monitoring
-breakeven_6h_min_pct = use_preset_values ? (preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.3 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 0.4 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 0.4 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 0.3 : 0.1) : breakeven_6h_min_pct_input
-breakeven_6h_max_pct = use_preset_values ? (preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.4 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 0.4 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 0.5 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 0.4 : 0.5) : breakeven_6h_max_pct_input
-
-// 3-Hour Breakeven Protection (Configured for v14 1H presets)
-use_3hour_breakeven_input = input.bool(false, "3-Hour Breakeven Exit", tooltip="Default: OFF. Automatically closes positions within a specified profit range after being open for 3+ hours, if profit has reached the trigger threshold. Locks in small profits for trades that have moved into profit but haven't moved significantly further.", group="🛡️ Breakeven Protection")
-breakeven_3h_min_profit_input = input.float(0.3, "3H Breakeven Trigger %", minval=0.0, maxval=5.0, step=0.05, tooltip="Default: 0.3%. Minimum profit % that must be reached to trigger 3-hour breakeven exit. Preset auto-sets per timeframe.", group="🛡️ Breakeven Protection")
-breakeven_3h_min_pct_input = input.float(0.02, "3H Breakeven Lock %", minval=0.0, maxval=2.0, step=0.01, tooltip="Default: 0.02%. Minimum profit % to exit via 3-hour breakeven. Preset auto-sets per timeframe.", group="🛡️ Breakeven Protection")
-breakeven_3h_max_pct_input = input.float(0.10, "3H Breakeven Max %", minval=0.01, maxval=2.0, step=0.01, tooltip="Default: 0.10%. Maximum profit % to exit via 3-hour breakeven.", group="🛡️ Breakeven Protection")
-
-// Apply preset or manual 3-hour breakeven - DISABLED for all presets by default
-use_3hour_breakeven = use_preset_values ? false : use_3hour_breakeven_input
-breakeven_3h_min_profit = use_preset_values ? (preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.45 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 0.45 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 0.45 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 0.30 : 0.3) : breakeven_3h_min_profit_input
-breakeven_3h_min_pct = use_preset_values ? (preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.10 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 0.10 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 0.10 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 0.05 : 0.02) : breakeven_3h_min_pct_input
-breakeven_3h_max_pct = use_preset_values ? (preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.15 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 0.15 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 0.15 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 0.10 : 0.10) : breakeven_3h_max_pct_input
+breakeven_6h_min_pct = use_preset_values ? (preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 0.1 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.3 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 0.4 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 0.4 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 0.3 : 0.1) : breakeven_6h_min_pct_input
+breakeven_6h_max_pct = use_preset_values ? (preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 0.1 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.4 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 0.4 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 0.5 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 0.4 : 0.5) : breakeven_6h_max_pct_input
 
 // ============================================
 // TRAILING STOP
@@ -237,7 +232,7 @@ trailing_dist_input = input.float(1.0, "Trail Distance %", minval=0.01, maxval=5
 
 // Apply preset or manual trailing - V14 OPTIMIZED BTC PRESET
 trailing_trigger = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 2.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 1.5 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" ? 5.0 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 1.5 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 2.4 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 4.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 1.8 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 1.5 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 1.5 : preset == "5Min (Kraken US) BTCUSD.P" ? 5.0 : 2.0) : trailing_trigger_input
-trailing_dist = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 1.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.8 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 0.05 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 1.3 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 0.5 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 2.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 1.2 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 1.0 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 1.5 : 2.5) : trailing_dist_input
+trailing_dist = use_preset_values ? (preset == "5Min BIP / BTC PERP (Coinbase USA)" ? 1.0 : preset == "1H BIP / BTC PERP (Coinbase USA)" ? 0.8 : preset == "5Min XPP / XRP PERP (Coinbase USA)" ? 0.05 : preset == "5Min ETP / ETH PERP (Coinbase USA)" ? 1.0 : preset == "1H ETP / ETH PERP (Coinbase USA)" ? 0.5 : preset == "5Min SLP / SOL PERP (Coinbase USA)" ? 2.0 : preset == "1H SLP / SOL PERP (Coinbase USA)" ? 1.2 : preset == "1H XPP / XRP PERP (Coinbase USA)" ? 1.0 : preset == "5Min (Binance US) BTCUSDT.P" or preset == "5Min (Coinbase INTX) BTCUSDC.P" or preset == "5Min (Kraken US) BTCUSD.P" ? 1.5 : 2.5) : trailing_dist_input
 
 // ============================================
 // ICHIMOKU CALCULATIONS (SAME AS V12)
@@ -595,22 +590,6 @@ if strategy.position_size < 0 and use_trailing and current_profit_short >= trail
     new_stop = close * (1 + trailing_dist / 100)
     if new_stop < current_stop
         current_stop := new_stop
-
-// 3-Hour Breakeven Exit: Close positions within configured profit range after 3+ hours, if profit has reached trigger threshold (configured for 1H presets)
-if use_3hour_breakeven and strategy.position_size != 0 and not na(entry_time) and not na(entry_price)
-    hours_since_entry = (time - entry_time) / (1000 * 60 * 60)  // Convert milliseconds to hours
-    if hours_since_entry >= 3
-        // Check if profit has reached minimum threshold (0.3%)
-        if strategy.position_size > 0
-            // Long position: check if profit reached threshold, then exit if within range
-            if current_profit_long >= breakeven_3h_min_profit
-                if current_profit_long >= breakeven_3h_min_pct and current_profit_long <= breakeven_3h_max_pct
-                    strategy.close("LONG", comment="3H Breakeven")
-        else if strategy.position_size < 0
-            // Short position: check if profit reached threshold, then exit if within range
-            if current_profit_short >= breakeven_3h_min_profit
-                if current_profit_short >= breakeven_3h_min_pct and current_profit_short <= breakeven_3h_max_pct
-                    strategy.close("SHORT", comment="3H Breakeven")
 
 // 6-Hour Breakeven Exit: Close positions within configured profit range after 6+ hours
 // UPDATED: Now uses calc_on_every_tick=true to detect when price ENTERS the min-max range
@@ -1064,7 +1043,7 @@ bgcolor(price_above_cloud and cloud_bullish ? color.new(color.green, 97) : price
 
 if barstate.islast and use_preset_values
     // Use dark background with high opacity for better visibility on all chart themes
-    var table info_table = table.new(position.top_right, 2, 12, bgcolor=color.new(color.black, 10), border_width=2, border_color=color.new(color.white, 50), frame_color=color.new(color.white, 30), frame_width=1)
+    var table info_table = table.new(position.top_right, 2, 11, bgcolor=color.new(color.black, 10), border_width=2, border_color=color.new(color.white, 50), frame_color=color.new(color.white, 30), frame_width=1)
     
     // Header row with bright yellow/orange background for high visibility
     table.cell(info_table, 0, 0, "€£$¥ Ichimoku v14", text_color=color.white, text_size=size.normal, bgcolor=color.new(color.orange, 20), text_halign=text.align_left)
@@ -1097,25 +1076,21 @@ if barstate.islast and use_preset_values
     table.cell(info_table, 0, 6, "Breakeven", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
     table.cell(info_table, 1, 6, be_line, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
     
-    be_3h_line = "3H BE: " + (use_3hour_breakeven ? "ON" : "OFF") + " | Trigger ≥" + str.tostring(breakeven_3h_min_profit, "#.#") + "% | Range " + str.tostring(breakeven_3h_min_pct, "#.##") + "%-" + str.tostring(breakeven_3h_max_pct, "#.##") + "%"
-    table.cell(info_table, 0, 7, "3H Breakeven", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
-    table.cell(info_table, 1, 7, be_3h_line, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
-    
     be_6h_line = "6H BE: " + (use_6hour_breakeven ? "ON" : "OFF") + " | Range " + str.tostring(breakeven_6h_min_pct, "#.#") + "%-" + str.tostring(breakeven_6h_max_pct, "#.#") + "%"
-    table.cell(info_table, 0, 8, "6H Breakeven", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
-    table.cell(info_table, 1, 8, be_6h_line, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 0, 7, "6H Breakeven", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 1, 7, be_6h_line, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
     
     trail_line = "Trail: " + (use_trailing ? "ON" : "OFF") + " | Trigger " + str.tostring(trailing_trigger, "#.##") + "% | Distance " + str.tostring(trailing_dist, "#.##") + "%"
-    table.cell(info_table, 0, 9, "Trailing", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
-    table.cell(info_table, 1, 9, trail_line, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 0, 8, "Trailing", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 1, 8, trail_line, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
     
     // Count active time filters
     active_time_filters = (use_news_filter ? 1 : 0) + (use_weekend_entry_block_3 ? 1 : 0) + (use_evening_entry_block ? 1 : 0)
     time_status = active_time_filters > 0 ? str.tostring(active_time_filters) + " ACTIVE" : "OFF"
-    table.cell(info_table, 0, 10, "Time Filters", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
-    table.cell(info_table, 1, 10, time_status, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 0, 9, "Time Filters", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 1, 9, time_status, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
     
     // ADX Acceleration Status
     adx_accel_status = use_adx_acceleration ? "ON" : "OFF"
-    table.cell(info_table, 0, 11, "ADX Acceleration", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
-    table.cell(info_table, 1, 11, adx_accel_status, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 0, 10, "ADX Acceleration", text_color=color.white, text_size=size.small, bgcolor=color.new(color.black, 20))
+    table.cell(info_table, 1, 10, adx_accel_status, text_color=color.new(color.aqua, 0), text_size=size.small, bgcolor=color.new(color.black, 20))
